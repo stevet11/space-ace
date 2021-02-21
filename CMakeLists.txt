@@ -28,6 +28,24 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 add_subdirectory(door++)
 
-add_executable(space-ace main.cpp)
+# hahaha.  Why am I not surprised to see glog not wanting to work AT ALL.
+#
+# add_subdirectory(glog)
+# find_package (glog 0.5.0 REQUIRED)
+
+file(GLOB IMAGES
+    ansi/*.ans
+)
+
+add_custom_command(
+    OUTPUT images.h
+    COMMAND ./build_images.sh
+    DEPENDS ${IMAGES}
+    COMMENT "Generating images.h"
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+)
+
+# add_executable(space-ace main.cpp deck.cpp images.h glog::glog)
+add_executable(space-ace main.cpp deck.cpp images.h)
 target_link_libraries(space-ace door++ pthread)
 
