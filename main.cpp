@@ -484,24 +484,41 @@ int main(int argc, char *argv[]) {
     break;
   }
 
-  Deck d(deck_color);
+  int height = 3;
+  Deck d(deck_color, height);
   door::Panel *c;
   door << door::reset << door::cls;
 
   // This displays the cards in the upper left corner.
   // We want them center, and down some.
 
-  // int cards_dealt_width = 59; int cards_delt_height = 9;
-  int off_x = (mx - 59) / 2;
+  int space = 3;
+
+  // int cards_dealt_width = 59; int cards_dealt_height = 9;
+  int game_width;
+  {
+    int cx, cy, level;
+    cardgo(27, space, height, cx, cy, level);
+    game_width = cx + 5; // card width
+  }
+  int off_x = (mx - game_width) / 2;
   int off_y = (my - 9) / 2;
+
+  std::uniform_int_distribution<int> rand_card(0, 51); // 0 - 51
+  std::uniform_int_distribution<int> rand_action(0, 100);
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
-    cardgo(x, cx, cy, level);
-    c = d.back(level);
+    cardgo(x, space, height, cx, cy, level);
+    if (rand_action(rng) > 25) {
+      c = d.back(level);
+    } else {
+      c = d.card(rand_card(rng));
+    }
     c->set(cx + off_x, cy + off_y);
     door << *c;
   }
+  door << door::reset;
   door << door::nl << door::nl;
 
   r = door.sleep_key(door.inactivity);

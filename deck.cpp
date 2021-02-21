@@ -2,14 +2,23 @@
 
 #include <sstream>
 
-Deck::Deck() {
+Deck::Deck(int size) {
   cardback = door::ANSIColor(door::COLOR::RED);
+  card_height = size;
   init();
 }
 
-Deck::Deck(door::ANSIColor backcolor) : cardback{backcolor} { init(); }
+Deck::Deck(door::ANSIColor backcolor, int size) : cardback{backcolor} {
+  card_height = size;
+  init();
+}
 
 void Deck::init(void) {
+  if (card_height != 3) {
+    if (card_height != 5) {
+      card_height = 3;
+    }
+  }
   for (int i = 0; i < 52; ++i) {
     cards.push_back(card_of(i));
   }
@@ -34,28 +43,8 @@ int Deck::is_suit(int c) { return c / 13; }
 int Deck::is_rank(int c) { return c % 13; }
 
 char Deck::rank_symbol(int c) {
-  switch (c) {
-  case 0:
-    return 'A';
-  case 1:
-  case 2:
-  case 3:
-  case 4:
-  case 5:
-  case 6:
-  case 7:
-  case 8:
-    return char(c + 0x30 + 1);
-  case 9:
-    return 'T';
-  case 10:
-    return 'J';
-  case 11:
-    return 'Q';
-  case 12:
-    return 'K';
-  }
-  return '?';
+  const char symbols[] = "A23456789TJQK";
+  return symbols[c];
 }
 
 std::string Deck::suit_symbol(int c) {
@@ -110,11 +99,19 @@ door::Panel *Deck::card_of(int c) {
   p->addLine(std::make_unique<door::Line>(str, 5, color));
   oss.str(std::string());
   oss.clear();
+
+  if (card_height == 5)
+    p->addLine(std::make_unique<door::Line>("     ", 5, color));
+
   oss << "  " << s << "  ";
   str = oss.str();
   p->addLine(std::make_unique<door::Line>(str, 5, color));
   oss.str(std::string());
   oss.clear();
+
+  if (card_height == 5)
+    p->addLine(std::make_unique<door::Line>("     ", 5, color));
+
   oss << "   " << s << r;
   str = oss.str();
   p->addLine(std::make_unique<door::Line>(str, 5, color));
@@ -172,9 +169,11 @@ door::Panel *Deck::back_of(int level) {
   door::Panel *p = new door::Panel(0, 0, 5);
   std::string c = back_char(level);
   std::string l = c + c + c + c + c;
-  p->addLine(std::make_unique<door::Line>(l, 5, cardback));
-  p->addLine(std::make_unique<door::Line>(l, 5, cardback));
-  p->addLine(std::make_unique<door::Line>(l, 5, cardback));
+  for (int x = 0; x < card_height; ++x) {
+    p->addLine(std::make_unique<door::Line>(l, 5, cardback));
+  };
+  // p->addLine(std::make_unique<door::Line>(l, 5, cardback));
+  // p->addLine(std::make_unique<door::Line>(l, 5, cardback));
   return p;
 }
 
@@ -195,8 +194,10 @@ door::Panel *Deck::card(int c) { return cards[c]; }
 door::Panel *Deck::back(int level) { return backs[level]; }
 
 /*
-          1         2         3         4         5         6
-0123456789012345678901234567890123456789012345678901234567890
+Layout spacing 1:
+
+         1         2         3         4         5         6
+123456789012345678901234567890123456789012345678901234567890
          ░░░░░             ░░░░░             ░░░░░
          ░░░░░             ░░░░░             ░░░░░
       ▒▒▒▒▒░▒▒▒▒▒       #####░#####       #####░#####
@@ -206,8 +207,28 @@ door::Panel *Deck::back(int level) { return backs[level]; }
 █████▓█████▓█████▓#####=#####=#####=#####=#####=#####=#####
 █████ █████ █████ ##### ##### ##### ##### ##### ##### #####
 █████ █████ █████ ##### ##### ##### ##### ##### ##### #####
+
+width = 5 * 10 + (1*9) = 59   OK!
+
+Layout with spacing = 2:
+
+            EEEEE
+        ZZZZZ
+    yyyyyZZZyyyyy
+    yyyyy   yyyyy
+XXXXXyyyXXXXXyyyXXXXX
+XXXXX   XXXXX   XXXXX
+
+width = 5 * 10 + (2 * 9) = 50+18 = 68   !  I could do that!
 */
-void cardgo(int pos, int &x, int &y, int &level) {
+void cardgo(int pos, int space, int h, int &x, int &y, int &level) {
+  const int CARD_WIDTH = 5;
+  int HALF_WIDTH = 3;
+  // space = 1 or 3
+  // int space = 1;
+  // space = 3;
+  HALF_WIDTH += space / 2;
+
   /*
 int levels[4] = {3, 6, 9, 10};
 
@@ -221,37 +242,38 @@ int levels[4] = {3, 6, 9, 10};
       }
   }
 */
+  int between = CARD_WIDTH + space;
 
   if (pos < 3) {
     // top
     level = 1;
-    y = (level - 1) * 2 + 1;
-    x = (pos)*18 + 10;
+    y = (level - 1) * (h - 1) + 1;
+    x = pos * (between * 3) + between + HALF_WIDTH + space; // 10
     return;
   } else {
     pos -= 3;
   }
   if (pos < 6) {
     level = 2;
-    y = (level - 1) * 2 + 1;
+    y = (level - 1) * (h - 1) + 1;
     int group = (pos) / 2;
-    x = (pos)*6 + (group * 6) + 7;
+    x = pos * between + (group * between) + CARD_WIDTH + space * 2;
     return;
   } else {
     pos -= 6;
   }
   if (pos < 9) {
     level = 3;
-    y = (level - 1) * 2 + 1;
-    x = (pos)*6 + 4;
+    y = (level - 1) * (h - 1) + 1;
+    x = pos * between + HALF_WIDTH + space;
     return;
   } else {
     pos -= 9;
   }
   if (pos < 10) {
     level = 4;
-    y = (level - 1) * 2 + 1;
-    x = (pos)*6 + 1;
+    y = (level - 1) * (h - 1) + 1;
+    x = (pos)*between + space;
     return;
   } else {
     // something is wrong.

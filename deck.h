@@ -3,6 +3,15 @@
 #include <string>
 #include <vector>
 
+/*
+I tried card_height = 5, but the cards looked a little too stretched out/tall.
+3 looks good.
+
+Spacing 1 or 3.  1 is what was used before, 3 looks better, takes up more
+screenspace.  And I have plenty, even on 80x23.
+
+ */
+
 class Deck {
 private:
   door::ANSIColor cardback;
@@ -16,12 +25,13 @@ private:
   void init(void);
   char rank_symbol(int c);
   std::string suit_symbol(int c);
+  int card_height;
 
 public:
   enum SUIT { HEART, DIAMOND, CLUBS, SPADE };
 
-  Deck();
-  Deck(door::ANSIColor backcolor);
+  Deck(int size = 3);
+  Deck(door::ANSIColor backcolor, int size = 3);
   ~Deck();
 
   door::Panel *card(int c);
@@ -29,4 +39,4 @@ public:
   void part(int x, int y, door::Door &d, int level, bool left);
 };
 
-void cardgo(int pos, int &x, int &y, int &level);
+void cardgo(int pos, int space, int h, int &x, int &y, int &level);
