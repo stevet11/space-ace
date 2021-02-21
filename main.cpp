@@ -491,7 +491,7 @@ int main(int argc, char *argv[]) {
   // This displays the cards in the upper left corner.
   // We want them center, and down some.
 
-  // int cards_delt_width = 59; int cards_delt_height = 9;
+  // int cards_dealt_width = 59; int cards_delt_height = 9;
   int off_x = (mx - 59) / 2;
   int off_y = (my - 9) / 2;
 
