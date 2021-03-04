@@ -1,5 +1,6 @@
 #include "door.h"
 
+#include <random>
 #include <string>
 #include <vector>
 
@@ -40,3 +41,5 @@ public:
 };
 
 void cardgo(int pos, int space, int h, int &x, int &y, int &level);
+
+vector<int> card_shuffle(std::seed_seq &seed, int decks = 1);

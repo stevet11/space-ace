@@ -1,5 +1,6 @@
 #include "deck.h"
 
+#include <algorithm>
 #include <sstream>
 
 Deck::Deck(int size) {
@@ -281,4 +282,21 @@ int levels[4] = {3, 6, 9, 10};
     x = -1;
     level = -1;
   }
+}
+
+vector<int> card_shuffle(std::seed_seq &seed, int decks) {
+  std::mt19937 gen;
+
+  // build deck of cards
+  int size = decks * 52;
+  vector<int> deck;
+  deck.reserve(size);
+  for (int x = 0; x < size; ++x) {
+    deck.push_back(x);
+  }
+
+  // repeatable, but random
+  gen.seed(seed);
+  std::shuffle(deck.begin(), deck.end(), gen);
+  return deck;
 }
