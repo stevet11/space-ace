@@ -504,16 +504,20 @@ int main(int argc, char *argv[]) {
   int off_x = (mx - game_width) / 2;
   int off_y = (my - 9) / 2;
 
+  std::seed_seq s1{2021, 2, 27};
+  vector<int> deck1 = card_shuffle(s1, 1);
+
   std::uniform_int_distribution<int> rand_card(0, 51); // 0 - 51
   std::uniform_int_distribution<int> rand_action(0, 100);
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
     cardgo(x, space, height, cx, cy, level);
-    if (rand_action(rng) > 25) {
+    if (rand_action(rng) > 80) {
       c = d.back(level);
     } else {
-      c = d.card(rand_card(rng));
+      c = d.card(deck1[x]);
+      // c = d.card(rand_card(rng));
     }
     c->set(cx + off_x, cy + off_y);
     door << *c;
