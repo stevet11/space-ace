@@ -1,5 +1,8 @@
 #include "door.h"
 #include "space.h"
+#include <chrono>  // chrono::system_clock
+#include <ctime>   // localtime
+#include <iomanip> // put_time
 #include <iostream>
 #include <random>
 #include <string>
@@ -245,6 +248,16 @@ door::renderFunction rStatus = [](const std::string &txt) -> door::Render {
   return r;
 };
 
+std::string return_current_time_and_date() {
+  auto now = std::chrono::system_clock::now();
+  auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+  std::stringstream ss;
+  // ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+  ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %r");
+  return ss.str();
+}
+
 door::Panel make_about(void) {
   door::Panel about(2, 2, 60);
   about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
@@ -259,8 +272,7 @@ door::Panel make_about(void) {
 */
   about.addLine(std::make_unique<door::Line>(
       "---------------------------------", 60,
-      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLACK,
-                      door::ATTR::BOLD)));
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
   /*
   123456789012345678901234567890123456789012345678901234567890
   This door was written by Bugz.
@@ -279,18 +291,34 @@ door::Panel make_about(void) {
       "It is written in c++, only support Linux, and replaces", 60));
   about.addLine(std::make_unique<door::Line>("opendoors.", 60));
 
-  about.addLine(std::make_unique<door::Line>(
-      "Status: blue", 60,
-      statusValue(door::ANSIColor(door::COLOR::GREEN, door::ATTR::BOLD),
-                  door::ANSIColor(door::COLOR::MAGENTA, door::ATTR::BLINK))));
-  about.addLine(std::make_unique<door::Line>("Name: BUGZ", 60, rStatus));
-  about.addLine(std::make_unique<door::Line>(
-      "Size: 10240", 60,
-      statusValue(door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLUE,
-                                  door::ATTR::BOLD),
-                  door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                                  door::ATTR::BOLD, door::ATTR::BLINK))));
-  about.addLine(std::make_unique<door::Line>("Bugz is here.", 60, rStatus));
+  door::updateFunction updater = [](void) -> std::string {
+    std::string text = "Currently: ";
+    text.append(return_current_time_and_date());
+    return text;
+  };
+  std::string current = updater();
+  door::Line active(current, 60);
+  active.setUpdater(updater);
+  active.setRender(renderStatusValue(
+      door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE, door::ATTR::BOLD),
+      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                      door::ATTR::BOLD)));
+  about.addLine(std::make_unique<door::Line>(active));
+
+  /*
+    about.addLine(std::make_unique<door::Line>(
+        "Status: blue", 60,
+        statusValue(door::ANSIColor(door::COLOR::GREEN, door::ATTR::BOLD),
+                    door::ANSIColor(door::COLOR::MAGENTA, door::ATTR::BLINK))));
+    about.addLine(std::make_unique<door::Line>("Name: BUGZ", 60, rStatus));
+    about.addLine(std::make_unique<door::Line>(
+        "Size: 10240", 60,
+        statusValue(door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLUE,
+                                    door::ATTR::BOLD),
+                    door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                    door::ATTR::BOLD, door::ATTR::BLINK))));
+    about.addLine(std::make_unique<door::Line>("Bugz is here.", 60, rStatus));
+  */
 
   return about;
 }
@@ -452,9 +480,37 @@ int main(int argc, char *argv[]) {
 
   door << about;
 
+  // magic time!
   door << door::reset << door::nl << "Press another key...";
-  r = door.sleep_key(door.inactivity);
-  if (r < 0)
+  int x;
+
+  for (x = 0; x < 60; ++x) {
+    r = door.sleep_key(1);
+    if (r == -1) {
+      // ok!  Expected timeout!
+
+      // PROBLEM:  regular "local" terminal loses current attributes
+      // when cursor is save / restored.
+
+      door << door::SaveCursor;
+
+      if (about.update(door)) {
+        // ok I need to "fix" the cursor position.
+        // it has moved.
+      }
+
+      door << door::RestoreCursor;
+      door.previous = door::reset;
+
+    } else {
+      if (r < 0)
+        goto TIMEOUT;
+      if (r >= 0)
+        break;
+    }
+  }
+
+  if (x == 60)
     goto TIMEOUT;
 
   door << door::nl;
@@ -504,7 +560,7 @@ int main(int argc, char *argv[]) {
   int off_x = (mx - game_width) / 2;
   int off_y = (my - 9) / 2;
 
-  std::seed_seq s1{2021, 2, 27};
+  std::seed_seq s1{2021, 2, 27, 1};
   vector<int> deck1 = card_shuffle(s1, 1);
 
   std::uniform_int_distribution<int> rand_card(0, 51); // 0 - 51

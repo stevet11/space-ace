@@ -11,6 +11,10 @@ I tried card_height = 5, but the cards looked a little too stretched out/tall.
 Spacing 1 or 3.  1 is what was used before, 3 looks better, takes up more
 screenspace.  And I have plenty, even on 80x23.
 
+TODO:  Have functions that gives me:
+int deck(int c);  // which deck #
+int suit(int c);  // suit
+int rank(int c);  // rank
  */
 
 class Deck {
@@ -40,6 +44,26 @@ public:
   void part(int x, int y, door::Door &d, int level, bool left);
 };
 
+/**
+ * @brief Given a position, space=3, height=3, return x,y and level.
+ *
+ * @param pos
+ * @param space
+ * @param h
+ * @param x
+ * @param y
+ * @param level
+ */
 void cardgo(int pos, int space, int h, int &x, int &y, int &level);
 
+/**
+ * @brief shuffle deck of cards
+ *
+ * example of seeding the deck for a given date 2/27/2021 game 1
+ * std::seed_seq s1{2021, 2, 27, 1};
+ * vector<int> deck1 = card_shuffle(s1, 1);
+ * @param seed
+ * @param decks
+ * @return vector<int>
+ */
 vector<int> card_shuffle(std::seed_seq &seed, int decks = 1);
