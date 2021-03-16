@@ -572,8 +572,10 @@ int main(int argc, char *argv[]) {
     door << *c;
   }
 
-  std::this_thread::sleep_for(
-      std::chrono::seconds(2)); // 3 secs seemed too long!
+  /*
+    std::this_thread::sleep_for(
+        std::chrono::seconds(1)); // 3 secs seemed too long!
+  */
 
   for (int x = 18; x < 28; x++) {
     int cx, cy, level;
