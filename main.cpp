@@ -499,8 +499,7 @@ int main(int argc, char *argv[]) {
         // it has moved.
       }
 
-      door << door::RestoreCursor;
-      door.previous = door::reset;
+      door << door::RestoreCursor << door::reset;
 
     } else {
       if (r < 0)
@@ -561,23 +560,33 @@ int main(int argc, char *argv[]) {
   int off_y = (my - 9) / 2;
 
   std::seed_seq s1{2021, 2, 27, 1};
-  vector<int> deck1 = card_shuffle(s1, 1);
-
-  std::uniform_int_distribution<int> rand_card(0, 51); // 0 - 51
-  std::uniform_int_distribution<int> rand_action(0, 100);
+  std::vector<int> deck1 = card_shuffle(s1, 1);
+  std::vector<int> state = card_states();
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
+    std::this_thread::sleep_for(std::chrono::milliseconds(75));
     cardgo(x, space, height, cx, cy, level);
-    if (rand_action(rng) > 80) {
-      c = d.back(level);
-    } else {
-      c = d.card(deck1[x]);
-      // c = d.card(rand_card(rng));
-    }
+    c = d.back(level);
     c->set(cx + off_x, cy + off_y);
     door << *c;
   }
+
+  std::this_thread::sleep_for(
+      std::chrono::seconds(2)); // 3 secs seemed too long!
+
+  for (int x = 18; x < 28; x++) {
+    int cx, cy, level;
+    // usleep(1000 * 20);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    state.at(x) = 1;
+    cardgo(x, space, height, cx, cy, level);
+
+    c = d.card(deck1.at(x));
+    c->set(cx + off_x, cy + off_y);
+    door << *c;
+  }
+
   door << door::reset;
   door << door::nl << door::nl;
 

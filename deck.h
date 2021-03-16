@@ -2,6 +2,7 @@
 
 #include <random>
 #include <string>
+#include <utility> // pair
 #include <vector>
 
 /*
@@ -42,6 +43,8 @@ public:
   door::Panel *card(int c);
   door::Panel *back(int level);
   void part(int x, int y, door::Door &d, int level, bool left);
+  int unblocks(int c);
+  const static std::array<std::pair<int, int>, 18> blocks;
 };
 
 /**
@@ -66,4 +69,6 @@ void cardgo(int pos, int space, int h, int &x, int &y, int &level);
  * @param decks
  * @return vector<int>
  */
-vector<int> card_shuffle(std::seed_seq &seed, int decks = 1);
+std::vector<int> card_shuffle(std::seed_seq &seed, int decks = 1);
+
+std::vector<int> card_states(int decks = 1);

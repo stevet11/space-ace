@@ -194,6 +194,31 @@ door::Panel *Deck::card(int c) { return cards[c]; }
 
 door::Panel *Deck::back(int level) { return backs[level]; }
 
+const std::array<std::pair<int, int>, 18> Deck::blocks = {
+    make_pair(3, 4),   make_pair(5, 6),   make_pair(7, 8), // end row 1
+    make_pair(9, 10),  make_pair(10, 11), make_pair(12, 13),
+    make_pair(13, 14), make_pair(15, 16), make_pair(16, 17),
+    make_pair(18, 19), // end row 2
+    make_pair(19, 20), make_pair(20, 21), make_pair(21, 22),
+    make_pair(22, 23), make_pair(23, 24), make_pair(24, 25),
+    make_pair(25, 26), make_pair(26, 27) // 27
+};
+
+/**
+ * @brief Which card (if any) is unblocked by this card
+ *
+ * @param c
+ * @return * int
+ */
+int Deck::unblocks(int c) {
+  for (size_t i = 0; i < blocks.size(); ++i) {
+    if ((blocks.at(i).first == c) || (blocks.at(i).second == c)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 /*
 Layout spacing 1:
 
@@ -284,12 +309,12 @@ int levels[4] = {3, 6, 9, 10};
   }
 }
 
-vector<int> card_shuffle(std::seed_seq &seed, int decks) {
+std::vector<int> card_shuffle(std::seed_seq &seed, int decks) {
   std::mt19937 gen;
 
   // build deck of cards
   int size = decks * 52;
-  vector<int> deck;
+  std::vector<int> deck;
   deck.reserve(size);
   for (int x = 0; x < size; ++x) {
     deck.push_back(x);
@@ -299,4 +324,11 @@ vector<int> card_shuffle(std::seed_seq &seed, int decks) {
   gen.seed(seed);
   std::shuffle(deck.begin(), deck.end(), gen);
   return deck;
+}
+
+std::vector<int> card_states(int decks) {
+  // auto states = std::unique_ptr<std::vector<int>>(); // (decks * 52, 0)>;
+  std::vector<int> states;
+  states.assign(decks * 52, 0);
+  return states;
 }
