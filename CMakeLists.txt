@@ -8,7 +8,7 @@ project(spaceace
 ###########
 if (NOT CMAKE_BUILD_TYPE)
   ## set default to Debug
-  set(CMAKE_BUILD_TYPE Debug)  # override with -DCMAKE_BUILD_TYPE=Release
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)  # override with -DCMAKE_BUILD_TYPE=Release
   message("==> CMAKE_BUILD_TYPE empty. Changing it to Debug.")
 else()
   message("==> CMAKE_BUILD_TYPE == ${CMAKE_BUILD_TYPE}.")
@@ -28,11 +28,6 @@ set(CMAKE_CXX_EXTENSIONS ON)
 
 add_subdirectory(door++)
 
-# hahaha.  Why am I not surprised to see glog not wanting to work AT ALL.
-#
-# add_subdirectory(glog)
-# find_package (glog 0.5.0 REQUIRED)
-
 file(GLOB IMAGES
     ansi/*.ans
 )
@@ -45,7 +40,11 @@ add_custom_command(
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
 
-# add_executable(space-ace main.cpp deck.cpp images.h glog::glog)
-add_executable(space-ace main.cpp deck.cpp images.h)
-target_link_libraries(space-ace door++ pthread)
+set(SQLITECPP_RUN_CPPCHECK OFF CACHE BOOL "" FORCE)
+set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)
+add_subdirectory(SQLiteCpp)
+
+
+add_executable(space-ace main.cpp deck.cpp db.h db.cpp images.h)
+target_link_libraries(space-ace door++ pthread SQLiteCpp sqlite3 dl)
 

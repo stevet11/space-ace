@@ -7,6 +7,7 @@
 #include <random>
 #include <string>
 
+#include "db.h"
 #include "deck.h"
 /*
 
@@ -397,11 +398,25 @@ int main(int argc, char *argv[]) {
 
   door::Door door("space-ace", argc, argv);
   // door << door::reset << door::cls << door::nl;
-  door::ANSIColor ac(door::COLOR::YELLOW, door::ATTR::BOLD);
+  // door::ANSIColor ac(door::COLOR::YELLOW, door::ATTR::BOLD);
+  // door::ANSIColor mb(door::COLOR::MAGENTA, door::ATTR::BLINK);
 
-  door::ANSIColor mb(door::COLOR::MAGENTA, door::ATTR::BLINK);
+  // door << mb << "Does this work?" << door::reset << door::nl;
 
-  door << mb << "Does this work?" << door::reset << door::nl;
+  DBData spacedb;
+
+  // spacedb.init();
+
+  std::string setting = "last_play";
+  std::string user = door.username;
+  std::string value;
+  std::string blank = "<blank>";
+  value = spacedb.getSetting(user, setting, blank);
+
+  door << door::reset << "last_play: " << value << door::nl;
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+  value = return_current_time_and_date();
+  spacedb.setSetting(user, setting, value);
 
   // https://stackoverflow.com/questions/5008804/generating-random-integer-from-a-range
 
@@ -560,13 +575,19 @@ int main(int argc, char *argv[]) {
   int off_y = (my - 9) / 2;
 
   std::seed_seq s1{2021, 2, 27, 1};
-  std::vector<int> deck1 = card_shuffle(s1, 1);
-  std::vector<int> state = card_states();
+  cards deck1 = card_shuffle(s1, 1);
+  cards state = card_states();
 
+  // I tried setting the cursor before the delay and before displaying the card.
+  // It is very hard to see / just about useless.  Not worth the effort.
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
-    std::this_thread::sleep_for(std::chrono::milliseconds(75));
+
     cardgo(x, space, height, cx, cy, level);
+    // This is hardly visible.
+    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(75));
+
     c = d.back(level);
     c->set(cx + off_x, cy + off_y);
     door << *c;
@@ -580,9 +601,11 @@ int main(int argc, char *argv[]) {
   for (int x = 18; x < 28; x++) {
     int cx, cy, level;
     // usleep(1000 * 20);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
     state.at(x) = 1;
     cardgo(x, space, height, cx, cy, level);
+    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     c = d.card(deck1.at(x));
     c->set(cx + off_x, cy + off_y);

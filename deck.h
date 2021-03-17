@@ -18,6 +18,8 @@ int suit(int c);  // suit
 int rank(int c);  // rank
  */
 
+typedef std::vector<int> cards;
+
 class Deck {
 private:
   door::ANSIColor cardback;
@@ -28,6 +30,7 @@ private:
   door::Panel *back_of(int level);
   int is_rank(int c);
   int is_suit(int c);
+  int is_deck(int c);
   void init(void);
   char rank_symbol(int c);
   std::string suit_symbol(int c);
@@ -69,6 +72,6 @@ void cardgo(int pos, int space, int h, int &x, int &y, int &level);
  * @param decks
  * @return vector<int>
  */
-std::vector<int> card_shuffle(std::seed_seq &seed, int decks = 1);
+cards card_shuffle(std::seed_seq &seed, int decks = 1);
 
-std::vector<int> card_states(int decks = 1);
+cards card_states(int decks = 1);

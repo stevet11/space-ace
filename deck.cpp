@@ -40,8 +40,9 @@ Deck::~Deck() {
   backs.clear();
 }
 
-int Deck::is_suit(int c) { return c / 13; }
-int Deck::is_rank(int c) { return c % 13; }
+int Deck::is_deck(int c) { return c / 52; }
+int Deck::is_suit(int c) { return (c % 52) / 13; }
+int Deck::is_rank(int c) { return (c % 52) % 13; }
 
 char Deck::rank_symbol(int c) {
   const char symbols[] = "A23456789TJQK";
@@ -309,7 +310,7 @@ int levels[4] = {3, 6, 9, 10};
   }
 }
 
-std::vector<int> card_shuffle(std::seed_seq &seed, int decks) {
+cards card_shuffle(std::seed_seq &seed, int decks) {
   std::mt19937 gen;
 
   // build deck of cards
@@ -326,7 +327,7 @@ std::vector<int> card_shuffle(std::seed_seq &seed, int decks) {
   return deck;
 }
 
-std::vector<int> card_states(int decks) {
+cards card_states(int decks) {
   // auto states = std::unique_ptr<std::vector<int>>(); // (decks * 52, 0)>;
   std::vector<int> states;
   states.assign(decks * 52, 0);
