@@ -26,6 +26,13 @@ set(CMAKE_CXX_STANDARD   14)
 # set(CMAKE_CXX_STANDARD   17)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/door++)
+  message("***")
+  message("*** ERROR/MISSING *** please run: git clone ssh://gitredgreen/RedGreen/bzdoor.git")
+  message("*** (Or whatever git clone you need for door++)")
+  message("***")
+endif()
+
 add_subdirectory(door++)
 
 file(GLOB IMAGES
@@ -39,6 +46,12 @@ add_custom_command(
     COMMENT "Generating images.h"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )
+
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/SQLiteCpp)
+  message("***")
+  message("*** ERROR/MISSING *** please run: git clone https://github.com/SRombauts/SQLiteCpp.git")
+  message("***")
+endif()
 
 set(SQLITECPP_RUN_CPPCHECK OFF CACHE BOOL "" FORCE)
 set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)

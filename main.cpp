@@ -451,12 +451,12 @@ int main(int argc, char *argv[]) {
   if (r < 0) {
   TIMEOUT:
     if (r == -1) {
-      door.log("TIMEOUT");
+      door.log() << "TIMEOUT" << std::endl;
 
       door << timeout << door::reset << door::nl << door::nl;
     } else {
       if (r == -3) {
-        door.log("OUTTA TIME");
+        door.log() << "OUTTA TIME" << std::endl;
         door::Panel notime = make_notime(mx, my);
         door << notime << door::reset << door::nl;
       }
