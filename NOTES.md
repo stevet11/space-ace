@@ -1,4 +1,9 @@
 
+FUTURE:
+
+conan:  sqlitecpp  ?  poco  ?   gtest ?
+
+
 BUG:
 
 FIXED.  We detect "hangup" SIGPIPE.

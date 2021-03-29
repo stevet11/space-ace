@@ -177,8 +177,7 @@ door::Menu make_main_menu(void) {
 
   m.addSelection('1', "Play Cards");
   m.addSelection('2', "View Scores");
-  m.addSelection('3', "Drop to DOS");
-  m.addSelection('4', "Chat with BUGZ");
+  m.addSelection('3', "Configure");
   m.addSelection('H', "Help");
   m.addSelection('A', "About this game");
   m.addSelection('Q', "Quit");
@@ -292,19 +291,21 @@ door::Panel make_about(void) {
       "It is written in c++, only support Linux, and replaces", 60));
   about.addLine(std::make_unique<door::Line>("opendoors.", 60));
 
-  door::updateFunction updater = [](void) -> std::string {
-    std::string text = "Currently: ";
-    text.append(return_current_time_and_date());
-    return text;
-  };
-  std::string current = updater();
-  door::Line active(current, 60);
-  active.setUpdater(updater);
-  active.setRender(renderStatusValue(
-      door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE, door::ATTR::BOLD),
-      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                      door::ATTR::BOLD)));
-  about.addLine(std::make_unique<door::Line>(active));
+  /*
+    door::updateFunction updater = [](void) -> std::string {
+      std::string text = "Currently: ";
+      text.append(return_current_time_and_date());
+      return text;
+    };
+    std::string current = updater();
+    door::Line active(current, 60);
+    active.setUpdater(updater);
+    active.setRender(renderStatusValue(
+        door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+    door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                        door::ATTR::BOLD)));
+    about.addLine(std::make_unique<door::Line>(active));
+  */
 
   /*
     about.addLine(std::make_unique<door::Line>(
@@ -391,10 +392,6 @@ void display_starfield_space_ace(int mx, int my, door::Door &door,
 }
 
 int main(int argc, char *argv[]) {
-  /*
-  google::InitGoogleLogging(argv[0]);
-  LOG(INFO) << "Welcome!";
-  */
 
   door::Door door("space-ace", argc, argv);
   // door << door::reset << door::cls << door::nl;
@@ -407,22 +404,24 @@ int main(int argc, char *argv[]) {
 
   // spacedb.init();
 
-  std::string setting = "last_play";
-  std::string user = door.username;
-  std::string value;
-  std::string blank = "<blank>";
-  value = spacedb.getSetting(user, setting, blank);
+  /*
+    std::string setting = "last_play";
+    std::string user = door.username;
+    std::string value;
+    std::string blank = "<blank>";
+    value = spacedb.getSetting(user, setting, blank);
 
-  door << door::reset << "last_play: " << value << door::nl;
-  std::this_thread::sleep_for(std::chrono::seconds(2));
-  value = return_current_time_and_date();
-  spacedb.setSetting(user, setting, value);
+    door << door::reset << "last_play: " << value << door::nl;
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    value = return_current_time_and_date();
+    spacedb.setSetting(user, setting, value);
+  */
 
   // https://stackoverflow.com/questions/5008804/generating-random-integer-from-a-range
 
   std::random_device rd; // only used once to initialise (seed) engine
-  std::mt19937 rng(
-      rd()); // random-number engine used (Mersenne-Twister in this case)
+  std::mt19937 rng(rd());
+  // random-number engine used (Mersenne-Twister in this case)
   // std::uniform_int_distribution<int> uni(min, max); // guaranteed unbiased
 
   int mx, my; // Max screen width/height
@@ -491,10 +490,15 @@ int main(int argc, char *argv[]) {
   door << door::nl;
 
   door::Panel about = make_about();
+  // center the about box
   about.set((mx - 60) / 2, (my - 5) / 2);
 
   door << about;
+  r = door.sleep_key(door.inactivity);
+  if (r < 0)
+    goto TIMEOUT;
 
+  /*
   // magic time!
   door << door::reset << door::nl << "Press another key...";
   int x;
@@ -527,7 +531,11 @@ int main(int argc, char *argv[]) {
   if (x == 60)
     goto TIMEOUT;
 
+*/
+
   door << door::nl;
+
+  // configured by the player.
 
   door::ANSIColor deck_color;
   // RED, BLUE, GREEN, MAGENTA, CYAN
@@ -574,12 +582,17 @@ int main(int argc, char *argv[]) {
   int off_x = (mx - game_width) / 2;
   int off_y = (my - 9) / 2;
 
+  // The idea is to see the cards with <<Something Unique to the card game>>,
+  // Year, Month, Day, and game (like 1 of 3).
+  // This will make the games the same/fair for everyone.
+
   std::seed_seq s1{2021, 2, 27, 1};
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
   // I tried setting the cursor before the delay and before displaying the card.
   // It is very hard to see / just about useless.  Not worth the effort.
+
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
 
