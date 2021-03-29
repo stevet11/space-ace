@@ -258,6 +258,113 @@ std::string return_current_time_and_date() {
   return ss.str();
 }
 
+int press_a_key(door::Door &door) {
+  door << door::reset << "Press a key to continue...";
+  int r = door.sleep_key(door.inactivity);
+  door << door::nl;
+  return r;
+}
+
+int play_cards(door::Door &door, std::mt19937 &rng) {
+  int mx = door.width;
+  int my = door.height;
+  // configured by the player.
+
+  door::ANSIColor deck_color;
+  // RED, BLUE, GREEN, MAGENTA, CYAN
+  std::uniform_int_distribution<int> rand_color(0, 4);
+
+  switch (rand_color(rng)) {
+  case 0:
+    deck_color = door::ANSIColor(door::COLOR::RED);
+    break;
+  case 1:
+    deck_color = door::ANSIColor(door::COLOR::BLUE);
+    break;
+  case 2:
+    deck_color = door::ANSIColor(door::COLOR::GREEN);
+    break;
+  case 3:
+    deck_color = door::ANSIColor(door::COLOR::MAGENTA);
+    break;
+  case 4:
+    deck_color = door::ANSIColor(door::COLOR::CYAN);
+    break;
+  default:
+    deck_color = door::ANSIColor(door::COLOR::BLUE, door::ATTR::BLINK);
+    break;
+  }
+
+  int height = 3;
+  Deck d(deck_color, height);
+  door::Panel *c;
+  door << door::reset << door::cls;
+
+  // This displays the cards in the upper left corner.
+  // We want them center, and down some.
+
+  int space = 3;
+
+  // int cards_dealt_width = 59; int cards_dealt_height = 9;
+  int game_width;
+  {
+    int cx, cy, level;
+    cardgo(27, space, height, cx, cy, level);
+    game_width = cx + 5; // card width
+  }
+  int off_x = (mx - game_width) / 2;
+  int off_y = (my - 9) / 2;
+
+  // The idea is to see the cards with <<Something Unique to the card game>>,
+  // Year, Month, Day, and game (like 1 of 3).
+  // This will make the games the same/fair for everyone.
+
+  std::seed_seq s1{2021, 2, 27, 1};
+  cards deck1 = card_shuffle(s1, 1);
+  cards state = card_states();
+
+  // I tried setting the cursor before the delay and before displaying the card.
+  // It is very hard to see / just about useless.  Not worth the effort.
+
+  for (int x = 0; x < 28; x++) {
+    int cx, cy, level;
+
+    cardgo(x, space, height, cx, cy, level);
+    // This is hardly visible.
+    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(75));
+
+    c = d.back(level);
+    c->set(cx + off_x, cy + off_y);
+    door << *c;
+  }
+
+  /*
+    std::this_thread::sleep_for(
+        std::chrono::seconds(1)); // 3 secs seemed too long!
+  */
+
+  for (int x = 18; x < 28; x++) {
+    int cx, cy, level;
+    // usleep(1000 * 20);
+
+    state.at(x) = 1;
+    cardgo(x, space, height, cx, cy, level);
+    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    c = d.card(deck1.at(x));
+    c->set(cx + off_x, cy + off_y);
+    door << *c;
+  }
+
+  door << door::reset;
+  door << door::nl << door::nl;
+
+  int r = door.sleep_key(door.inactivity);
+  return r;
+}
+
 door::Panel make_about(void) {
   door::Panel about(2, 2, 60);
   about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
@@ -325,8 +432,11 @@ door::Panel make_about(void) {
   return about;
 }
 
-void display_starfield(int mx, int my, door::Door &door, std::mt19937 &rng) {
+void display_starfield(door::Door &door, std::mt19937 &rng) {
   door << door::reset << door::cls;
+
+  int mx = door.width;
+  int my = door.height;
 
   // display starfield
   const char *stars[2];
@@ -347,7 +457,12 @@ void display_starfield(int mx, int my, door::Door &door, std::mt19937 &rng) {
     door::ANSIColor white(door::COLOR::WHITE);
     door::ANSIColor dark(door::COLOR::BLACK, door::ATTR::BRIGHT);
 
-    for (int x = 0; x < (mx * my / 100); x++) {
+    // 10 is too many, 100 is too few. 40 looks ok.
+    int MAX_STARS = ((mx * my) / 40);
+    // door.log() << "Generating starmap using " << mx << "," << my << " : "
+    //           << MAX_STARS << " stars." << std::endl;
+
+    for (int x = 0; x < MAX_STARS; x++) {
       door::Goto star_at(uni_x(rng), uni_y(rng));
       door << star_at;
       if (x % 5 < 2)
@@ -363,7 +478,10 @@ void display_starfield(int mx, int my, door::Door &door, std::mt19937 &rng) {
   }
 }
 
-void display_space_ace(int mx, int my, door::Door &door) {
+void display_space_ace(door::Door &door) {
+  int mx = door.width;
+  int my = door.height;
+
   // space_ace is 72 chars wide, 6 high
   int sa_x = (mx - 72) / 2;
   int sa_y = (my - 6) / 2;
@@ -384,10 +502,12 @@ void display_space_ace(int mx, int my, door::Door &door) {
   door.sleep_key(5);
 }
 
-void display_starfield_space_ace(int mx, int my, door::Door &door,
-                                 std::mt19937 &rng) {
-  display_starfield(mx, my, door, rng);
-  display_space_ace(mx, my, door);
+void display_starfield_space_ace(door::Door &door, std::mt19937 &rng) {
+  // mx = door.width;
+  // my = door.height;
+
+  display_starfield(door, rng);
+  display_space_ace(door);
   door << door::reset;
 }
 
@@ -395,16 +515,13 @@ int main(int argc, char *argv[]) {
 
   door::Door door("space-ace", argc, argv);
   // door << door::reset << door::cls << door::nl;
-  // door::ANSIColor ac(door::COLOR::YELLOW, door::ATTR::BOLD);
-  // door::ANSIColor mb(door::COLOR::MAGENTA, door::ATTR::BLINK);
-
-  // door << mb << "Does this work?" << door::reset << door::nl;
 
   DBData spacedb;
 
   // spacedb.init();
 
   /*
+  // Example:  How to read/set values in spacedb settings.
     std::string setting = "last_play";
     std::string user = door.username;
     std::string value;
@@ -427,15 +544,15 @@ int main(int argc, char *argv[]) {
   int mx, my; // Max screen width/height
   if (door.width == 0) {
     // screen detect failed, use sensible defaults
-    mx = 80;
-    my = 23;
+    door.width = mx = 80;
+    door.height = my = 23;
   } else {
     mx = door.width;
     my = door.height;
   }
   // We assume here that the width and height are something crazy like 10x15. :P
 
-  display_starfield_space_ace(mx, my, door, rng);
+  display_starfield_space_ace(door, rng);
 
   // for testing inactivity timeout
   // door.inactivity = 10;
@@ -443,9 +560,49 @@ int main(int argc, char *argv[]) {
   door::Panel timeout = make_timeout(mx, my);
   door::Menu m = make_main_menu();
 
-  int r = m.choose(door);
-  // need to reset the colors.  (whoops!)
-  door << door::reset << door::nl;
+  door::Panel about = make_about();
+  // center the about box
+  about.set((mx - 60) / 2, (my - 5) / 2);
+
+  int r = 0;
+  while ((r >= 0) and (r != 6)) {
+    // starfield + menu ?
+    display_starfield(door, rng);
+    r = m.choose(door);
+    // need to reset the colors.  (whoops!)
+    door << door::reset << door::cls; // door::nl;
+    // OK! The screen is blank at this point!
+
+    switch (r) {
+    case 1: // play game
+      r = play_cards(door, rng);
+      break;
+
+    case 2: // view scores
+      door << "Show scores goes here!" << door::nl;
+      r = press_a_key(door);
+      break;
+
+    case 3: // configure
+      door << "Configure options go here" << door::nl;
+      r = press_a_key(door);
+      break;
+
+    case 4: // help
+      door << "Help!  Need some help here..." << door::nl;
+      r = press_a_key(door);
+      break;
+
+    case 5: // about
+      display_starfield(door, rng);
+      door << about << door::nl;
+      r = press_a_key(door);
+      break;
+
+    case 6: // quit
+      break;
+    }
+  }
 
   if (r < 0) {
   TIMEOUT:
@@ -463,40 +620,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  /*
-    display_starfield(mx, my, door, rng);
-    // WARNING: After starfield, cursor position is random!
-
-    door << door::Goto(1, 9); // door::nl << door::nl; // door::cls;
-
-    door << "Your name: "
-         << door::ANSIColor(door::COLOR::WHITE, door::COLOR::GREEN,
-                            door::ATTR::BOLD);
-    std::string istring;
-    istring = door.input_string(25);
-    door << door::reset << door::nl << "You typed in [" << istring << "]"
-         << door::nl;
-
-    door << "Hello, " << door.username << ", you chose option " << r << "!"
-         << door::nl;
-
-    door << "Press a key...";
-    r = door.sleep_key(door.inactivity);
-    if (r < 0)
-      goto TIMEOUT;
-
-  */
-
   door << door::nl;
-
-  door::Panel about = make_about();
-  // center the about box
-  about.set((mx - 60) / 2, (my - 5) / 2);
-
-  door << about;
-  r = door.sleep_key(door.inactivity);
-  if (r < 0)
-    goto TIMEOUT;
 
   /*
   // magic time!
@@ -534,6 +658,8 @@ int main(int argc, char *argv[]) {
 */
 
   door << door::nl;
+
+#ifdef NNY
 
   // configured by the player.
 
@@ -632,6 +758,8 @@ int main(int argc, char *argv[]) {
   if (r < 0)
     goto TIMEOUT;
 
+#endif
+
   /*
     door::Panel *p = d.back(2);
     p->set(10, 10);
@@ -646,9 +774,8 @@ int main(int argc, char *argv[]) {
   */
 
   // door << door::reset << door::cls;
-  display_starfield(mx, my, door, rng);
-  door << m << door::reset << door::nl << "This is what the menu looked liked!"
-       << door::nl;
+  display_starfield(door, rng);
+  door << m << door::reset << door::nl;
 
   // Normal DOOR exit goes here...
   door << door::nl << "Returning you to the BBS, please wait..." << door::nl;
