@@ -5,6 +5,11 @@ FINAL=images.h
 
 ansi-to-src ansi/*.ans > $BASE
 
+if [ $? -eq 127 ]; then
+  echo "using default, missing ansi-to-src"
+  exit 0
+fi
+
 # workaround
 if [ -f "$FINAL" ]; then
   # file exists
