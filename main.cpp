@@ -265,9 +265,109 @@ int press_a_key(door::Door &door) {
   return r;
 }
 
+door::Menu make_config_menu(void) {
+  door::Menu m(5, 5, 31);
+  door::Line mtitle("Space-Ace Configuration Menu");
+  door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
+  door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  m.setColor(border_color);
+  mtitle.setColor(title_color);
+  mtitle.setPadding(" ", title_color);
+
+  m.setTitle(std::make_unique<door::Line>(mtitle), 1);
+
+  // m.setColorizer(true,
+  m.setRender(true, door::Menu::makeRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD)));
+  // m.setColorizer(false,
+  m.setRender(false, door::Menu::makeRender(
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                                         door::ATTR::BOLD)));
+
+  m.addSelection('D', "Deck Colors");
+  m.addSelection('Q', "Quit");
+
+  return m;
+}
+
+door::Menu make_deck_menu(void) {
+  door::Menu m(5, 5, 31);
+  door::Line mtitle("Space-Ace Deck Menu");
+  door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
+  door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  m.setColor(border_color);
+  mtitle.setColor(title_color);
+  mtitle.setPadding(" ", title_color);
+
+  m.setTitle(std::make_unique<door::Line>(mtitle), 1);
+
+  // m.setColorizer(true,
+  m.setRender(true, door::Menu::makeRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD)));
+  // m.setColorizer(false,
+  m.setRender(false, door::Menu::makeRender(
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                                         door::ATTR::BOLD)));
+
+  m.addSelection('A', "All");
+  m.addSelection('B', "Blue");
+  m.addSelection('C', "Cyan");
+  m.addSelection('G', "Green");
+  m.addSelection('M', "Magenta");
+  m.addSelection('R', "Red");
+
+  return m;
+}
+
+int configure(door::Door &door, DBData &db) {
+  auto menu = make_config_menu();
+  int r = 0;
+  while (r >= 0) {
+    r = menu.choose(door);
+    if (r > 0) {
+      door << door::reset << door::cls;
+      char c = menu.which(r - 1);
+      if (c == 'D') {
+        // Ok, deck colors
+
+        door << door::reset << door::cls;
+        auto deck = make_deck_menu();
+        deck.choose(door);
+        door << door::reset << door::cls;
+      }
+      if (c == 'Q') {
+        return r;
+      }
+    }
+  }
+  return r;
+}
+
 int play_cards(door::Door &door, std::mt19937 &rng) {
   int mx = door.width;
   int my = door.height;
+
+  // cards color --
   // configured by the player.
 
   door::ANSIColor deck_color;
@@ -518,6 +618,17 @@ int main(int argc, char *argv[]) {
 
   DBData spacedb;
 
+  /*
+  std::function<std::ofstream &(void)> get_logger;
+
+  get_logger = [&door]() -> ofstream & { return door.log(); };
+
+  if (get_logger) {
+    get_logger() << "MEOW" << std::endl;
+    get_logger() << "hey! It works!" << std::endl;
+  }
+  */
+
   // spacedb.init();
 
   /*
@@ -584,8 +695,8 @@ int main(int argc, char *argv[]) {
       break;
 
     case 3: // configure
-      door << "Configure options go here" << door::nl;
-      r = press_a_key(door);
+      r = configure(door, spacedb);
+      // r = press_a_key(door);
       break;
 
     case 4: // help
