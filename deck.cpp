@@ -63,15 +63,29 @@ std::string Deck::suit_symbol(int c) {
       return std::string("\u2660");
     }
   } else {
-    switch (c) {
-    case 0:
-      return std::string(1, '\x03');
-    case 1:
-      return std::string(1, '\x04');
-    case 2:
-      return std::string(1, '\x05');
-    case 3:
-      return std::string(1, '\x06');
+    if (door::full_cp437) {
+      switch (c) {
+      case 0:
+        return std::string(1, '\x03');
+      case 1:
+        return std::string(1, '\x04');
+      case 2:
+        return std::string(1, '\x05');
+      case 3:
+        return std::string(1, '\x06');
+      }
+    } else {
+      // These look horrible!
+      switch (c) {
+      case 0:
+        return std::string(1, '*'); // H
+      case 1:
+        return std::string(1, '^'); // D
+      case 2:
+        return std::string(1, '%'); // C
+      case 3:
+        return std::string(1, '$'); // S
+      }
     }
   }
   return std::string("!", 1);
