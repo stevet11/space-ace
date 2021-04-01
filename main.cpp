@@ -300,6 +300,10 @@ door::Menu make_config_menu(void) {
   return m;
 }
 
+vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
+                                   std::string("Cyan"),    std::string("Green"),
+                                   std::string("Magenta"), std::string("Red")};
+
 door::Menu make_deck_menu(void) {
   door::Menu m(5, 5, 31);
   door::Line mtitle("Space-Ace Deck Menu");
@@ -328,20 +332,88 @@ door::Menu make_deck_menu(void) {
                                          door::ATTR::BOLD),
                          door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
                                          door::ATTR::BOLD)));
-
+  for (auto iter = deck_colors.begin(); iter != deck_colors.end(); ++iter) {
+    char c = (*iter)[0];
+    m.addSelection(c, (*iter).c_str());
+  }
+  /*
   m.addSelection('A', "All");
   m.addSelection('B', "Blue");
   m.addSelection('C', "Cyan");
   m.addSelection('G', "Green");
   m.addSelection('M', "Magenta");
   m.addSelection('R', "Red");
+  */
 
   return m;
 }
 
+bool iequals(const string &a, const string &b) {
+  unsigned int sz = a.size();
+  if (b.size() != sz)
+    return false;
+  for (unsigned int i = 0; i < sz; ++i)
+    if (tolower(a[i]) != tolower(b[i]))
+      return false;
+  return true;
+}
+
+#include <algorithm> // transform
+
+void string_toupper(std::string &str) {
+  std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+}
+
+// convert a string to an option
+// an option to the string to store
+door::ANSIColor from_string(std::string colorCode) {
+  std::map<std::string, door::ANSIColor> codeMap = {
+      {std::string("BLUE"), door::ANSIColor(door::COLOR::BLUE)},
+      {std::string("RED"), door::ANSIColor(door::COLOR::RED)},
+      {std::string("CYAN"), door::ANSIColor(door::COLOR::CYAN)},
+      {std::string("GREEN"), door::ANSIColor(door::COLOR::GREEN)},
+      {std::string("MAGENTA"), door::ANSIColor(door::COLOR::MAGENTA)}};
+
+  std::string code = colorCode;
+  string_toupper(code);
+
+  auto iter = codeMap.find(code);
+  if (iter != codeMap.end()) {
+    return iter->second;
+  }
+
+  // And if it doesn't match, and isn't ALL ... ?
+  // if (code.compare("ALL") == 0) {
+  std::random_device dev;
+  std::mt19937_64 rng(dev());
+
+  std::uniform_int_distribution<size_t> idDist(0, codeMap.size() - 1);
+  iter = codeMap.begin();
+  std::advance(iter, idDist(rng));
+
+  return iter->second;
+  // }
+}
+
+// This does not seem to be working.  I keep getting zero.
+
+int opt_from_string(std::string colorCode) {
+
+  for (std::size_t pos = 0; pos != deck_colors.size(); ++pos) {
+    // if (caseInsensitiveStringCompare(colorCode, deck_colors[pos]) == 0) {
+    if (iequals(colorCode, deck_colors[pos])) {
+      return pos;
+    }
+  }
+  return 0;
+}
+
+std::string from_color_option(int opt) { return deck_colors[opt]; }
+
 int configure(door::Door &door, DBData &db) {
   auto menu = make_config_menu();
   int r = 0;
+
   while (r >= 0) {
     r = menu.choose(door);
     if (r > 0) {
@@ -349,11 +421,27 @@ int configure(door::Door &door, DBData &db) {
       char c = menu.which(r - 1);
       if (c == 'D') {
         // Ok, deck colors
+        // get default
+        std::string key("DeckColor");
+        std::string currentDefault =
+            db.getSetting(door.username, key, std::string("ALL"));
+        int currentOpt = opt_from_string(currentDefault);
 
         door << door::reset << door::cls;
         auto deck = make_deck_menu();
-        deck.choose(door);
+        deck.defaultSelection(currentOpt);
+        int newOpt = deck.choose(door);
         door << door::reset << door::cls;
+
+        if (newOpt >= 0) {
+          newOpt--;
+          std::string newColor = from_color_option(newOpt);
+          if (newOpt != currentOpt) {
+            door.log() << key << " was " << currentDefault << ", " << currentOpt
+                       << ". Now " << newColor << ", " << newOpt << std::endl;
+            db.setSetting(door.username, key, newColor);
+          }
+        }
       }
       if (c == 'Q') {
         return r;
@@ -363,7 +451,7 @@ int configure(door::Door &door, DBData &db) {
   return r;
 }
 
-int play_cards(door::Door &door, std::mt19937 &rng) {
+int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int mx = door.width;
   int my = door.height;
 
@@ -371,6 +459,13 @@ int play_cards(door::Door &door, std::mt19937 &rng) {
   // configured by the player.
 
   door::ANSIColor deck_color;
+  std::string key("DeckColor");
+  std::string currentDefault =
+      db.getSetting(door.username, key, std::string("ALL"));
+  door.log() << key << " shows as " << currentDefault << std::endl;
+  deck_color = from_string(currentDefault);
+
+  /*
   // RED, BLUE, GREEN, MAGENTA, CYAN
   std::uniform_int_distribution<int> rand_color(0, 4);
 
@@ -394,6 +489,7 @@ int play_cards(door::Door &door, std::mt19937 &rng) {
     deck_color = door::ANSIColor(door::COLOR::BLUE, door::ATTR::BLINK);
     break;
   }
+  */
 
   int height = 3;
   Deck d(deck_color, height);
@@ -423,8 +519,8 @@ int play_cards(door::Door &door, std::mt19937 &rng) {
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
-  // I tried setting the cursor before the delay and before displaying the card.
-  // It is very hard to see / just about useless.  Not worth the effort.
+  // I tried setting the cursor before the delay and before displaying the
+  // card. It is very hard to see / just about useless.  Not worth the effort.
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
@@ -518,14 +614,12 @@ door::Panel make_about(void) {
     about.addLine(std::make_unique<door::Line>(
         "Status: blue", 60,
         statusValue(door::ANSIColor(door::COLOR::GREEN, door::ATTR::BOLD),
-                    door::ANSIColor(door::COLOR::MAGENTA, door::ATTR::BLINK))));
-    about.addLine(std::make_unique<door::Line>("Name: BUGZ", 60, rStatus));
-    about.addLine(std::make_unique<door::Line>(
-        "Size: 10240", 60,
-        statusValue(door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLUE,
-                                    door::ATTR::BOLD),
-                    door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                                    door::ATTR::BOLD, door::ATTR::BLINK))));
+                    door::ANSIColor(door::COLOR::MAGENTA,
+    door::ATTR::BLINK)))); about.addLine(std::make_unique<door::Line>("Name:
+    BUGZ", 60, rStatus)); about.addLine(std::make_unique<door::Line>( "Size:
+    10240", 60, statusValue(door::ANSIColor(door::COLOR::GREEN,
+    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
+    door::COLOR::BLUE, door::ATTR::BOLD, door::ATTR::BLINK))));
     about.addLine(std::make_unique<door::Line>("Bugz is here.", 60, rStatus));
   */
 
@@ -661,7 +755,8 @@ int main(int argc, char *argv[]) {
     mx = door.width;
     my = door.height;
   }
-  // We assume here that the width and height are something crazy like 10x15. :P
+  // We assume here that the width and height are something crazy like 10x15.
+  // :P
 
   display_starfield_space_ace(door, rng);
 
@@ -686,7 +781,7 @@ int main(int argc, char *argv[]) {
 
     switch (r) {
     case 1: // play game
-      r = play_cards(door, rng);
+      r = play_cards(door, spacedb, rng);
       break;
 
     case 2: // view scores
@@ -827,8 +922,8 @@ int main(int argc, char *argv[]) {
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
-  // I tried setting the cursor before the delay and before displaying the card.
-  // It is very hard to see / just about useless.  Not worth the effort.
+  // I tried setting the cursor before the delay and before displaying the
+  // card. It is very hard to see / just about useless.  Not worth the effort.
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
