@@ -9,6 +9,55 @@
 I tried card_height = 5, but the cards looked a little too stretched out/tall.
 3 looks good.
 
+layout, rev2:
+
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+                    +---------------------------------+
+                      Space Ace - Tri-Peaks Solitaire
+                    +---------------------------------+
+
+             ░░░░░                   ░░░░░                   ░░░░░
+             ░░░░░                   ░░░░░                   ░░░░░
+         ▒▒▒▒▒░░░▒▒▒▒▒           #####░░░#####           #####░░░#####
+         ▒▒▒▒▒   ▒▒▒▒▒           #####   #####           #####   #####
+     ▓▓▓▓▓▒▒▒▓▓▓▓▓▒▒▒▓▓▓▓▓   #####===#####===#####   #####===#####===#####
+     ▓▓▓▓▓   ▓▓▓▓▓   ▓▓▓▓▓   #####   #####   #####   #####   #####   #####
+ █████▓▓▓█████▓▓▓█████▓▓▓#####===#####===#####===#####===#####===#####===#####
+ █████   █████   █████   #####   #####   #####   #####   #####   #####   #####
+ █████   █████   █████   #####   #####   #####   #####   #####   #####   #####
+
+                           #####
+Player Information         #####        Time in: xx Time out: xx
+Name:                      #####    Playing Day: November 3rd
+Hand Score   :                            Current Streak: N
+Todays Score :      XX Cards Remaining    Longest Streak: NN
+Monthly Score:      Playing Hand X of X   Most Won: xxx Lost: xxx
+ [4] Lf [6] Rt  [Space] Play Card [Enter] Draw [D]one [H]elp [R]edraw
+
+
+layout, rev1:
+
+         ░░░░░             ░░░░░             ░░░░░
+         ░░░░░             ░░░░░             ░░░░░
+      ▒▒▒▒▒░▒▒▒▒▒       #####░#####       #####░#####
+      ▒▒▒▒▒ ▒▒▒▒▒       ##### #####       ##### #####
+   ▓▓▓▓▓▒▓▓▓▓▓▒▓▓▓▓▓ #####=#####=##### #####=#####=#####
+   ▓▓▓▓▓ ▓▓▓▓▓ ▓▓▓▓▓ ##### ##### ##### ##### ##### #####
+█████▓█████▓█████▓#####=#####=#####=#####=#####=#####=#####
+█████ █████ █████ ##### ##### ##### ##### ##### ##### #####
+█████ █████ █████ ##### ##### ##### ##### ##### ##### #####
+
+                           #####
+Player Information         #####        Time in: xx Time out: xx
+Name:                      #####    Playing Day: November 3rd
+Hand Score   :                            Current Streak: N
+Todays Score :      XX Cards Remaining    Longest Streak: NN
+Monthly Score:      Playing Hand X of X   Most Won: xxx Lost: xxx
+ [4] Lf [6] Rt  [Space] Play Card [Enter] Draw [D]one [H]elp [R]edraw
+
+
+
 Spacing 1 or 3.  1 is what was used before, 3 looks better, takes up more
 screenspace.  And I have plenty, even on 80x23.
 

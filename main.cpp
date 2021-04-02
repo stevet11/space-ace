@@ -9,6 +9,17 @@
 
 #include "db.h"
 #include "deck.h"
+
+#include <algorithm> // transform
+
+void string_toupper(std::string &str) {
+  std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+}
+
+door::ANSIColor from_string(std::string colorCode);
+
+std::function<std::ofstream &(void)> get_logger;
+
 /*
 
 Cards:
@@ -304,6 +315,94 @@ vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
                                    std::string("Cyan"),    std::string("Green"),
                                    std::string("Magenta"), std::string("Red")};
 
+/**
+ * @brief menu render that sets the text color based on the color found in the
+ * text itself.
+ *
+ * @param c1
+ * @param c2
+ * @param c3
+ * @return door::renderFunction
+ */
+door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
+                                     door::ANSIColor c3) {
+  door::renderFunction render = [c1, c2,
+                                 c3](const std::string &txt) -> door::Render {
+    door::Render r(txt);
+
+    bool option = true;
+    door::ColorOutput co;
+    // I need this mutable
+    door::ANSIColor textColor = c3;
+
+    // Color update:
+    {
+      std::string found;
+
+      for (auto &dc : deck_colors) {
+        if (txt.find(dc) != string::npos) {
+          found = dc;
+          break;
+        }
+      }
+
+      if (!found.empty()) {
+        if (found == "All") {
+          // handle this some other way.
+          textColor.setFg(door::COLOR::WHITE);
+        } else {
+          door::ANSIColor c = from_string(found);
+          textColor.setFg(c.getFg());
+        }
+      }
+    }
+    co.pos = 0;
+    co.len = 0;
+    co.c = c1;
+    // d << blue;
+
+    int tpos = 0;
+    for (char const &c : txt) {
+      if (option) {
+        if (c == '[' or c == ']') {
+          if (co.c != c1)
+            if (co.len != 0) {
+              r.outputs.push_back(co);
+              co.reset();
+              co.pos = tpos;
+            }
+          co.c = c1;
+          if (c == ']')
+            option = false;
+        } else {
+          if (co.c != c2)
+            if (co.len != 0) {
+              r.outputs.push_back(co);
+              co.reset();
+              co.pos = tpos;
+            }
+          co.c = c2;
+        }
+      } else {
+        if (co.c != textColor)
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+        co.c = textColor;
+      }
+      co.len++;
+      tpos++;
+    }
+    if (co.len != 0) {
+      r.outputs.push_back(co);
+    }
+    return r;
+  };
+  return render;
+}
+
 door::Menu make_deck_menu(void) {
   door::Menu m(5, 5, 31);
   door::Line mtitle("Space-Ace Deck Menu");
@@ -316,21 +415,32 @@ door::Menu make_deck_menu(void) {
 
   m.setTitle(std::make_unique<door::Line>(mtitle), 1);
 
-  // m.setColorizer(true,
-  m.setRender(true, door::Menu::makeRender(
+  /*
+    // m.setColorizer(true,
+    m.setRender(true, door::Menu::makeRender(
+                          door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                          door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                          door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                          door::ANSIColor(door::COLOR::BLUE,
+    door::ATTR::BOLD)));
+    // m.setColorizer(false,
+    m.setRender(false, door::Menu::makeRender(
+                           door::ANSIColor(door::COLOR::YELLOW,
+    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::WHITE,
+    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
+    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::CYAN,
+    door::COLOR::BLUE, door::ATTR::BOLD)));
+  */
+  m.setRender(true, makeColorRender(
                         door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
                         door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
-                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
-                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD)));
-  // m.setColorizer(false,
-  m.setRender(false, door::Menu::makeRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD)));
+  m.setRender(false, makeColorRender(
                          door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                          door::ATTR::BOLD),
                          door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
                                          door::ATTR::BOLD),
                          door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                                         door::ATTR::BOLD),
-                         door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
                                          door::ATTR::BOLD)));
   for (auto iter = deck_colors.begin(); iter != deck_colors.end(); ++iter) {
     char c = (*iter)[0];
@@ -356,12 +466,6 @@ bool iequals(const string &a, const string &b) {
     if (tolower(a[i]) != tolower(b[i]))
       return false;
   return true;
-}
-
-#include <algorithm> // transform
-
-void string_toupper(std::string &str) {
-  std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 }
 
 // convert a string to an option
@@ -499,21 +603,35 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // This displays the cards in the upper left corner.
   // We want them center, and down some.
 
-  int space = 3;
+  const int space = 3;
 
   // int cards_dealt_width = 59; int cards_dealt_height = 9;
   int game_width;
+  int game_height = 13; // 9;
   {
     int cx, cy, level;
     cardgo(27, space, height, cx, cy, level);
     game_width = cx + 5; // card width
   }
   int off_x = (mx - game_width) / 2;
-  int off_y = (my - 9) / 2;
+  int off_y = (my - game_height) / 2;
 
   // The idea is to see the cards with <<Something Unique to the card game>>,
   // Year, Month, Day, and game (like 1 of 3).
   // This will make the games the same/fair for everyone.
+  std::string tripeaks("Space Ace - Tri-Peaks Solitaire");
+  int tp_off_x = (mx - tripeaks.size()) / 2;
+  door::Panel spaceAceTriPeaks(tp_off_x, off_y, tripeaks.size() + 2);
+
+  spaceAceTriPeaks.setStyle(door::BorderStyle::SINGLE);
+  spaceAceTriPeaks.setColor(
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
+
+  spaceAceTriPeaks.addLine(
+      std::make_unique<door::Line>(tripeaks, tripeaks.size() + 2));
+  door << spaceAceTriPeaks;
+
+  off_y += 3;
 
   std::seed_seq s1{2021, 2, 27, 1};
   cards deck1 = card_shuffle(s1, 1);
@@ -709,6 +827,7 @@ int main(int argc, char *argv[]) {
 
   door::Door door("space-ace", argc, argv);
   // door << door::reset << door::cls << door::nl;
+  get_logger = [&door]() -> ofstream & { return door.log(); };
 
   DBData spacedb;
 
@@ -986,5 +1105,6 @@ int main(int argc, char *argv[]) {
   // Normal DOOR exit goes here...
   door << door::nl << "Returning you to the BBS, please wait..." << door::nl;
 
+  get_logger = nullptr;
   return 0;
 }
