@@ -9,7 +9,7 @@
 
 #include "db.h"
 #include "deck.h"
-
+#include "version.h"
 #include <algorithm> // transform
 
 void string_toupper(std::string &str) {
@@ -619,16 +619,17 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // The idea is to see the cards with <<Something Unique to the card game>>,
   // Year, Month, Day, and game (like 1 of 3).
   // This will make the games the same/fair for everyone.
-  std::string tripeaks("Space Ace - Tri-Peaks Solitaire");
+  std::string tripeaks(" Space Ace - Tri-Peaks Solitaire v" SPACEACE_VERSION
+                       " ");
   int tp_off_x = (mx - tripeaks.size()) / 2;
-  door::Panel spaceAceTriPeaks(tp_off_x, off_y, tripeaks.size() + 2);
+  door::Panel spaceAceTriPeaks(tp_off_x, off_y, tripeaks.size());
 
   spaceAceTriPeaks.setStyle(door::BorderStyle::SINGLE);
   spaceAceTriPeaks.setColor(
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
 
   spaceAceTriPeaks.addLine(
-      std::make_unique<door::Line>(tripeaks, tripeaks.size() + 2));
+      std::make_unique<door::Line>(tripeaks, tripeaks.size()));
   door << spaceAceTriPeaks;
 
   off_y += 3;
@@ -705,6 +706,8 @@ door::Panel make_about(void) {
   library.
 
    */
+  about.addLine(std::make_unique<door::Line>(
+      "Space Ace v" SPACEACE_VERSION " " SPACEACE_COPYRIGHT, 60));
   about.addLine(
       std::make_unique<door::Line>("This door was written by Bugz.", 60));
   about.addLine(std::make_unique<door::Line>("", 60));
