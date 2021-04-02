@@ -159,7 +159,7 @@ door::Panel make_notime(int mx, int my) {
 
 door::Menu make_main_menu(void) {
   door::Menu m(5, 5, 25);
-  door::Line mtitle("Space-Ace Main Menu");
+  door::Line mtitle( SPACEACE " Main Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -186,9 +186,9 @@ door::Menu make_main_menu(void) {
                          door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
                                          door::ATTR::BOLD)));
 
-  m.addSelection('1', "Play Cards");
-  m.addSelection('2', "View Scores");
-  m.addSelection('3', "Configure");
+  m.addSelection('P', "Play Cards");
+  m.addSelection('S', "View Scores");
+  m.addSelection('C', "Configure");
   m.addSelection('H', "Help");
   m.addSelection('A', "About this game");
   m.addSelection('Q', "Quit");
@@ -278,7 +278,7 @@ int press_a_key(door::Door &door) {
 
 door::Menu make_config_menu(void) {
   door::Menu m(5, 5, 31);
-  door::Line mtitle("Space-Ace Configuration Menu");
+  door::Line mtitle( SPACEACE " Configuration Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -405,7 +405,7 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
 
 door::Menu make_deck_menu(void) {
   door::Menu m(5, 5, 31);
-  door::Line mtitle("Space-Ace Deck Menu");
+  door::Line mtitle( SPACEACE " Deck Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -619,7 +619,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // The idea is to see the cards with <<Something Unique to the card game>>,
   // Year, Month, Day, and game (like 1 of 3).
   // This will make the games the same/fair for everyone.
-  std::string tripeaks(" Space Ace - Tri-Peaks Solitaire v" SPACEACE_VERSION
+  std::string tripeaks(" " SPACEACE " - Tri-Peaks Solitaire v" SPACEACE_VERSION
                        " ");
   int tp_off_x = (mx - tripeaks.size()) / 2;
   door::Panel spaceAceTriPeaks(tp_off_x, off_y, tripeaks.size());
@@ -681,7 +681,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 }
 
 door::Panel make_about(void) {
-  door::Panel about(2, 2, 60);
+  door::Panel about(60);
   about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
   about.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                  door::ATTR::BOLD));
@@ -707,7 +707,7 @@ door::Panel make_about(void) {
 
    */
   about.addLine(std::make_unique<door::Line>(
-      "Space Ace v" SPACEACE_VERSION " " SPACEACE_COPYRIGHT, 60));
+      SPACEACE " v" SPACEACE_VERSION " " SPACEACE_COPYRIGHT, 60));
   about.addLine(
       std::make_unique<door::Line>("This door was written by Bugz.", 60));
   about.addLine(std::make_unique<door::Line>("", 60));
