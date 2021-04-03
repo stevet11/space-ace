@@ -16,6 +16,14 @@ void string_toupper(std::string &str) {
   std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 }
 
+bool replace(std::string &str, const std::string &from, const std::string &to) {
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
+}
+
 door::ANSIColor from_string(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
@@ -159,7 +167,7 @@ door::Panel make_notime(int mx, int my) {
 
 door::Menu make_main_menu(void) {
   door::Menu m(5, 5, 25);
-  door::Line mtitle( SPACEACE " Main Menu");
+  door::Line mtitle(SPACEACE " Main Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -278,7 +286,7 @@ int press_a_key(door::Door &door) {
 
 door::Menu make_config_menu(void) {
   door::Menu m(5, 5, 31);
-  door::Line mtitle( SPACEACE " Configuration Menu");
+  door::Line mtitle(SPACEACE " Configuration Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -405,7 +413,7 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
 
 door::Menu make_deck_menu(void) {
   door::Menu m(5, 5, 31);
-  door::Line mtitle( SPACEACE " Deck Menu");
+  door::Line mtitle(SPACEACE " Deck Menu");
   door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
   door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
                               door::ATTR::BOLD);
@@ -687,11 +695,6 @@ door::Panel make_about(void) {
                                  door::ATTR::BOLD));
 
   about.addLine(std::make_unique<door::Line>("About This Door", 60));
-  /*
-  door::Line magic("---------------------------------", 60);
-  magic.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLACK,
-                                 door::ATTR::BOLD));
-*/
   about.addLine(std::make_unique<door::Line>(
       "---------------------------------", 60,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
@@ -706,8 +709,17 @@ door::Panel make_about(void) {
   library.
 
    */
-  about.addLine(std::make_unique<door::Line>(
-      SPACEACE " v" SPACEACE_VERSION " " SPACEACE_COPYRIGHT, 60));
+  about.addLine(
+      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, 60));
+  std::string copyright = SPACEACE_COPYRIGHT;
+  if (door::unicode) {
+    std::string textcp = "(C)";
+    std::string utf8cp = "\u00a9";
+    replace(copyright, textcp, utf8cp);
+  }
+
+  about.addLine(std::make_unique<door::Line>(copyright, 60));
+  about.addLine(std::make_unique<door::Line>("", 60));
   about.addLine(
       std::make_unique<door::Line>("This door was written by Bugz.", 60));
   about.addLine(std::make_unique<door::Line>("", 60));
