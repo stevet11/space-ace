@@ -543,8 +543,7 @@ int configure(door::Door &door, DBData &db) {
         // Ok, deck colors
         // get default
         std::string key("DeckColor");
-        std::string currentDefault =
-            db.getSetting(door.username, key, std::string("ALL"));
+        std::string currentDefault = db.getSetting(key, std::string("ALL"));
         int currentOpt = opt_from_string(currentDefault);
 
         door << door::reset << door::cls;
@@ -559,7 +558,7 @@ int configure(door::Door &door, DBData &db) {
           if (newOpt != currentOpt) {
             door.log() << key << " was " << currentDefault << ", " << currentOpt
                        << ". Now " << newColor << ", " << newOpt << std::endl;
-            db.setSetting(door.username, key, newColor);
+            db.setSetting(key, newColor);
           }
         }
       }
@@ -580,8 +579,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 
   door::ANSIColor deck_color;
   std::string key("DeckColor");
-  std::string currentDefault =
-      db.getSetting(door.username, key, std::string("ALL"));
+  std::string currentDefault = db.getSetting(key, std::string("ALL"));
   door.log() << key << " shows as " << currentDefault << std::endl;
   deck_color = from_string(currentDefault);
 
@@ -835,7 +833,7 @@ void display_space_ace(door::Door &door) {
       door << s; // << door::nl;
     sa_y++;
   }
-  // pause 5 seconds so they can enjoy our awesome logo
+  // pause 5 seconds so they can enjoy our awesome logo -- if they want.
   door.sleep_key(5);
 }
 
@@ -856,6 +854,39 @@ int main(int argc, char *argv[]) {
 
   DBData spacedb;
 
+  spacedb.setUser(door.username);
+
+  time_t last_call = std::stol(spacedb.getSetting("LastCall", "0"));
+  time_t now =
+      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+  spacedb.setSetting("LastCall", std::to_string(now));
+
+  if (last_call != 0) {
+    door << "Welcome Back!" << door::nl;
+    auto nowClock = std::chrono::system_clock::from_time_t(now);
+    auto lastClock = std::chrono::system_clock::from_time_t(last_call);
+    auto delta = nowClock - lastClock;
+
+    // int days = chrono::duration_cast<chrono::days>(delta).count();  // c++ 20
+    int hours = chrono::duration_cast<chrono::hours>(delta).count();
+    int days = hours / 24;
+    int minutes = chrono::duration_cast<chrono::minutes>(delta).count();
+
+    if (days > 1) {
+      door << "It's been " << days << " days since you last played."
+           << door::nl;
+    } else {
+      if (hours > 1) {
+        door << "It's been " << hours << " hours since you last played."
+             << door::nl;
+      } else {
+        door << "It's been " << minutes << " minutes since you last played."
+             << door::nl;
+      }
+    }
+    press_a_key(door);
+  }
   /*
   std::function<std::ofstream &(void)> get_logger;
 

@@ -18,8 +18,9 @@ settings(username TEXT, setting TEXT, value TEXT, \
 PRIMARY KEY(username, setting));");
 }
 
-std::string DBData::getSetting(const std::string &user,
-                               const std::string &setting,
+void DBData::setUser(std::string currentUser) { user = currentUser; }
+
+std::string DBData::getSetting(const std::string &setting,
                                std::string ifMissing) {
   SQLite::Statement query(
       db, "SELECT value FROM settings WHERE username=? AND setting=?");
@@ -33,8 +34,7 @@ std::string DBData::getSetting(const std::string &user,
   return ifMissing;
 }
 
-void DBData::setSetting(const std::string &user, const std::string &setting,
-                        const std::string &value) {
+void DBData::setSetting(const std::string &setting, const std::string &value) {
   SQLite::Statement stmt(
       db, "REPLACE INTO settings(username, setting, value) VALUES(?,?,?);");
   stmt.reset();
