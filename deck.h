@@ -27,6 +27,16 @@ layout, rev2:
  █████   █████   █████   #####   #####   #####   #####   #####   #####   #####
  █████   █████   █████   #####   #####   #####   #####   #####   #####   #####
 
+  Name:                          #####   -----       Playing: December 31
+  Score:                         #####   -----       Current Streak: nn
+  Time used: xxx / XXX left      #####   -----       Longest Streak: nn
+  Playing Hand X of X            Cards left XX
+  1234567890123456789012345      123456789012345     12345678901234567890
+ [4/<] Left [6/>] Right [Space] Play Card [Enter] Draw [Q]uit [R]edraw [H]elp
+
+^ -- above is 20 lines from +-- to [4/<] < Left
+
+
                            #####
 Player Information         #####        Time in: xx Time out: xx
 Name:                      #####    Playing Day: November 3rd

@@ -24,6 +24,14 @@ bool replace(std::string &str, const std::string &from, const std::string &to) {
   return true;
 }
 
+bool replace(std::string &str, const char *from, const char *to) {
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, strlen(from), to);
+  return true;
+}
+
 door::ANSIColor from_string(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
@@ -713,9 +721,11 @@ door::Panel make_about(void) {
       std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, 60));
   std::string copyright = SPACEACE_COPYRIGHT;
   if (door::unicode) {
+    /*
     std::string textcp = "(C)";
     std::string utf8cp = "\u00a9";
-    replace(copyright, textcp, utf8cp);
+    replace(copyright, textcp, utf8cp);*/
+    replace(copyright, "(C)", "\u00a9");
   }
 
   about.addLine(std::make_unique<door::Line>(copyright, 60));
@@ -900,9 +910,9 @@ int main(int argc, char *argv[]) {
   door::Panel timeout = make_timeout(mx, my);
   door::Menu m = make_main_menu();
 
-  door::Panel about = make_about();
+  door::Panel about = make_about(); // 8 lines
   // center the about box
-  about.set((mx - 60) / 2, (my - 5) / 2);
+  about.set((mx - 60) / 2, (my - 9) / 2);
 
   int r = 0;
   while ((r >= 0) and (r != 6)) {
