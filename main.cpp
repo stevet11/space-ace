@@ -707,7 +707,7 @@ door::Panel make_panel3(void) {
   {
     door::updateFunction cardsleftUpdate = [](void) -> std::string {
       std::string text = "Cards left:";
-      text.append(std::to_string(52 - card_number));
+      text.append(std::to_string(51 - card_number));
       return text;
     };
     std::string cardsleftString = "Cards left:--";
@@ -848,7 +848,6 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int height = 3;
   Deck d(deck_color, height);
   door::Panel *c;
-  door << door::reset << door::cls;
 
   // This displays the cards in the upper left corner.
   // We want them center, and down some.
@@ -873,7 +872,6 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   door::Panel spaceAceTriPeaks = make_tripeaks();
   int tp_off_x = (mx - spaceAceTriPeaks.getWidth()) / 2;
   spaceAceTriPeaks.set(tp_off_x, off_y);
-  door << spaceAceTriPeaks;
 
   off_y += 3;
 
@@ -901,53 +899,103 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     pc.set(left_panel + off_x, off_yp + 5);
   }
 
-  {
-    // step 1:
-    // draw the deck "source"
-    int cx, cy, level;
-    cardgo(29, space, height, cx, cy, level);
-    c = d.back(level);
-    c->set(cx + off_x, cy + off_y);
-    // p3 is heigh below
-    p3.set(cx + off_x, cy + off_y + height);
-    door << p1 << p3 << p2 << pc;
-    door << *c;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  bool dealing = true;
+  int r = 0;
+  while ((r >= 0) and (r != 'Q')) {
+
+    door << door::reset << door::cls;
+    door << spaceAceTriPeaks;
+
+    {
+      // step 1:
+      // draw the deck "source"
+      int cx, cy, level;
+      cardgo(29, space, height, cx, cy, level);
+
+      if (card_number == 51)
+        level = 0; // out of cards!
+      c = d.back(level);
+      c->set(cx + off_x, cy + off_y);
+      // p3 is heigh below
+      p3.set(cx + off_x, cy + off_y + height);
+      door << p1 << p3 << p2 << pc;
+      door << *c;
+      if (dealing)
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    // I tried setting the cursor before the delay and before displaying the
+    // card. It is very hard to see / just about useless.  Not worth the effort.
+
+    for (int x = 0; x < (dealing ? 28 : 29); x++) {
+      int cx, cy, level;
+
+      cardgo(x, space, height, cx, cy, level);
+      // This is hardly visible.
+      // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+      if (dealing)
+        std::this_thread::sleep_for(std::chrono::milliseconds(75));
+
+      if (dealing) {
+        c = d.back(level);
+        c->set(cx + off_x, cy + off_y);
+        door << *c;
+      } else {
+        // redrawing -- draw the cards with their correct "state"
+        int s = state.at(x);
+
+        switch (s) {
+        case 0:
+          c = d.back(level);
+          c->set(cx + off_x, cy + off_y);
+          door << *c;
+          break;
+        case 1:
+          // cardgo(x, space, height, cx, cy, level);
+          if (x == 28)
+            c = d.card(deck1.at(card_number));
+          else
+            c = d.card(deck1.at(x));
+          c->set(cx + off_x, cy + off_y);
+          door << *c;
+          break;
+        case 2:
+          // no card to draw.  :)
+          break;
+        }
+      }
+    }
+
+    if (dealing)
+      for (int x = 18; x < 29; x++) {
+        int cx, cy, level;
+
+        state.at(x) = 1;
+        cardgo(x, space, height, cx, cy, level);
+        // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+        c = d.card(deck1.at(x));
+        c->set(cx + off_x, cy + off_y);
+        door << *c;
+      }
+    else {
+      // setup the "next card" @ 28
+    }
+    dealing = false;
+
+    p3.update(door);
+    door << door::reset;
+
+    r = door.sleep_key(door.inactivity);
+    if ((r < 0x1000) and (r > 0)) {
+      r = std::toupper(r);
+      if (r == ' ') {
+        if (card_number < 51)
+          card_number++;
+      }
+    }
   }
-
-  // I tried setting the cursor before the delay and before displaying the
-  // card. It is very hard to see / just about useless.  Not worth the effort.
-
-  for (int x = 0; x < 28; x++) {
-    int cx, cy, level;
-
-    cardgo(x, space, height, cx, cy, level);
-    // This is hardly visible.
-    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(75));
-
-    c = d.back(level);
-    c->set(cx + off_x, cy + off_y);
-    door << *c;
-  }
-
-  for (int x = 18; x < 29; x++) {
-    int cx, cy, level;
-
-    state.at(x) = 1;
-    cardgo(x, space, height, cx, cy, level);
-    // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    c = d.card(deck1.at(x));
-    c->set(cx + off_x, cy + off_y);
-    door << *c;
-  }
-
-  p3.update(door);
-  door << door::reset;
-
-  int r = door.sleep_key(door.inactivity);
   return r;
 }
 
@@ -1129,7 +1177,8 @@ int main(int argc, char *argv[]) {
     auto lastClock = std::chrono::system_clock::from_time_t(last_call);
     auto delta = nowClock - lastClock;
 
-    // int days = chrono::duration_cast<chrono::days>(delta).count();  // c++ 20
+    // int days = chrono::duration_cast<chrono::days>(delta).count();  // c++
+    // 20
     int hours = chrono::duration_cast<chrono::hours>(delta).count();
     int days = hours / 24;
     int minutes = chrono::duration_cast<chrono::minutes>(delta).count();
@@ -1180,8 +1229,8 @@ int main(int argc, char *argv[]) {
     mx = door.width;
     my = door.height;
   }
-  // We assume here that the width and height aren't something crazy like 10x15.
-  // :P  (or 24x923!)
+  // We assume here that the width and height aren't something crazy like
+  // 10x15. :P  (or 24x923!)
 
   display_starfield_space_ace(door, rng);
 
