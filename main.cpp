@@ -36,6 +36,14 @@ door::ANSIColor from_string(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
 
+unsigned long score = 0;
+int hand = 1;
+int total_hands = 3;
+int card_number = 29;
+int current_streak = 0;
+int best_streak = 0;
+std::chrono::_V2::system_clock::time_point play_day;
+
 /*
 
 Cards:
@@ -570,6 +578,215 @@ int configure(door::Door &door, DBData &db) {
   return r;
 }
 
+door::Panel make_panel1(door::Door &door) {
+  const int W = 25;
+  door::Panel p(W);
+  p.setStyle(door::BorderStyle::NONE);
+  door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+  door::renderFunction svRender = renderStatusValue(statusColor, valueColor);
+  // or use renderStatus as defined above.
+  // We'll stick with these for now.
+
+  {
+    std::string userString = "Name: ";
+    userString += door.username;
+    door::Line username(userString, W);
+    username.setRender(svRender);
+    p.addLine(std::make_unique<door::Line>(username));
+  }
+  {
+    door::updateFunction scoreUpdate = [](void) -> std::string {
+      std::string text = "Score: ";
+      text.append(std::to_string(score));
+      return text;
+    };
+    std::string scoreString = scoreUpdate();
+    door::Line score(scoreString, W);
+    score.setRender(svRender);
+    score.setUpdater(scoreUpdate);
+    p.addLine(std::make_unique<door::Line>(score));
+  }
+  {
+    door::updateFunction timeUpdate = [&door](void) -> std::string {
+      std::stringstream ss;
+      std::string text;
+      ss << "Time used: " << setw(3) << door.time_used << " / " << setw(3)
+         << door.time_left;
+      text = ss.str();
+      return text;
+    };
+    std::string timeString = timeUpdate();
+    door::Line time(timeString, W);
+    time.setRender(svRender);
+    time.setUpdater(timeUpdate);
+    p.addLine(std::make_unique<door::Line>(time));
+  }
+  {
+    door::updateFunction handUpdate = [](void) -> std::string {
+      std::string text = "Playing Hand ";
+      text.append(std::to_string(hand));
+      text.append(" of ");
+      text.append(std::to_string(total_hands));
+      return text;
+    };
+    std::string handString = handUpdate();
+    door::Line hands(handString, W);
+    hands.setRender(svRender);
+    hands.setUpdater(handUpdate);
+    p.addLine(std::make_unique<door::Line>(hands));
+  }
+
+  return p;
+}
+
+door::Panel make_panel2(void) {
+  const int W = 20;
+  door::Panel p(W);
+  p.setStyle(door::BorderStyle::NONE);
+  door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+  door::renderFunction svRender = renderStatusValue(statusColor, valueColor);
+
+  {
+    std::string text = "Playing: ";
+    auto in_time_t = std::chrono::system_clock::to_time_t(play_day);
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&in_time_t), "%B %d");
+    text.append(ss.str());
+  }
+  {
+    door::updateFunction currentUpdate = [](void) -> std::string {
+      std::string text = "Current Streak: ";
+      text.append(std::to_string(current_streak));
+      return text;
+    };
+    std::string currentString = currentUpdate();
+    door::Line current(currentString, W);
+    current.setRender(svRender);
+    current.setUpdater(currentUpdate);
+    p.addLine(std::make_unique<door::Line>(current));
+  }
+  {
+    door::updateFunction currentUpdate = [](void) -> std::string {
+      std::string text = "Longest Streak: ";
+      text.append(std::to_string(best_streak));
+      return text;
+    };
+    std::string currentString = currentUpdate();
+    door::Line current(currentString, W);
+    current.setRender(svRender);
+    current.setUpdater(currentUpdate);
+    p.addLine(std::make_unique<door::Line>(current));
+  }
+
+  return p;
+}
+
+door::renderFunction commandLineRender(door::ANSIColor bracket,
+                                       door::ANSIColor inner,
+                                       door::ANSIColor outer) {
+  door::renderFunction rf = [bracket, inner,
+                             outer](const std::string &txt) -> door::Render {
+    door::Render r(txt);
+    door::ColorOutput co;
+
+    co.pos = 0;
+    co.len = 0;
+    co.c = outer;
+    bool inOuter = true;
+
+    int tpos = 0;
+    for (char const &c : txt) {
+      if (inOuter) {
+
+        // we're in the outer text
+        if (co.c != outer) {
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+          co.c = outer;
+        }
+
+        // check for [
+        if (c == '[') {
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+          inOuter = false;
+          co.c = bracket;
+        }
+      } else {
+        // We're not in the outer.
+
+        if (co.c != inner) {
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+          co.c = inner;
+        }
+
+        if (c == ']') {
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+          inOuter = true;
+          co.c = bracket;
+        }
+      }
+      co.len++;
+      tpos++;
+    }
+    if (co.len != 0)
+      r.outputs.push_back(co);
+    return r;
+  };
+  return rf;
+}
+
+door::Panel make_commandline(void) {
+  const int W = 76;
+  door::Panel p(W);
+  p.setStyle(door::BorderStyle::NONE);
+  std::string commands;
+
+  if (door::unicode) {
+    commands = "[4/\u25c4] Left [6/\u25ba] Right [Space] Play Card [Enter] "
+               "Draw [Q]uit "
+               "[R]edraw [H]elp";
+  } else {
+    commands =
+        "[4/\x11] Left [6/\x10] Right [Space] Play Card [Enter] Draw [Q]uit "
+        "[R]edraw [H]elp";
+  }
+
+  door::ANSIColor bracketColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                               door::ATTR::BOLD);
+  door::ANSIColor innerColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+  door::ANSIColor outerColor(door::COLOR::GREEN, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+
+  door::renderFunction cmdRender =
+      commandLineRender(bracketColor, innerColor, outerColor);
+  door::Line cmd(commands, W);
+  cmd.setRender(cmdRender);
+  p.addLine(std::make_unique<door::Line>(cmd));
+  return p;
+}
+
 int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int mx = door.width;
   int my = door.height;
@@ -578,36 +795,11 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // configured by the player.
 
   door::ANSIColor deck_color;
-  std::string key("DeckColor");
-  std::string currentDefault = db.getSetting(key, std::string("ALL"));
+  // std::string key("DeckColor");
+  const char *key = "DeckColor";
+  std::string currentDefault = db.getSetting(key, "ALL");
   door.log() << key << " shows as " << currentDefault << std::endl;
   deck_color = from_string(currentDefault);
-
-  /*
-  // RED, BLUE, GREEN, MAGENTA, CYAN
-  std::uniform_int_distribution<int> rand_color(0, 4);
-
-  switch (rand_color(rng)) {
-  case 0:
-    deck_color = door::ANSIColor(door::COLOR::RED);
-    break;
-  case 1:
-    deck_color = door::ANSIColor(door::COLOR::BLUE);
-    break;
-  case 2:
-    deck_color = door::ANSIColor(door::COLOR::GREEN);
-    break;
-  case 3:
-    deck_color = door::ANSIColor(door::COLOR::MAGENTA);
-    break;
-  case 4:
-    deck_color = door::ANSIColor(door::COLOR::CYAN);
-    break;
-  default:
-    deck_color = door::ANSIColor(door::COLOR::BLUE, door::ATTR::BLINK);
-    break;
-  }
-  */
 
   int height = 3;
   Deck d(deck_color, height);
@@ -648,6 +840,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 
   off_y += 3;
 
+  // figure out what date we're playing / what game we're playing
   std::seed_seq s1{2021, 2, 27, 1};
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
@@ -668,14 +861,8 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     door << *c;
   }
 
-  /*
-    std::this_thread::sleep_for(
-        std::chrono::seconds(1)); // 3 secs seemed too long!
-  */
-
   for (int x = 18; x < 28; x++) {
     int cx, cy, level;
-    // usleep(1000 * 20);
 
     state.at(x) = 1;
     cardgo(x, space, height, cx, cy, level);
@@ -687,8 +874,18 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     door << *c;
   }
 
+  off_y += 11;
+  door::Panel p1 = make_panel1(door);
+  door::Panel p2 = make_panel2();
+  door::Panel pc = make_commandline();
+
+  p1.set(off_x + 3, off_y);
+  p2.set(off_x + 55, off_y);
+  pc.set(off_x + 3, off_y + 5);
+
+  door << p1 << p2 << pc;
   door << door::reset;
-  door << door::nl << door::nl;
+  door << door::nl;
 
   int r = door.sleep_key(door.inactivity);
   return r;
@@ -849,19 +1046,23 @@ void display_starfield_space_ace(door::Door &door, std::mt19937 &rng) {
 int main(int argc, char *argv[]) {
 
   door::Door door("space-ace", argc, argv);
-  // door << door::reset << door::cls << door::nl;
+
+  // store the door log so we can easily access it.
   get_logger = [&door]() -> ofstream & { return door.log(); };
 
   DBData spacedb;
-
   spacedb.setUser(door.username);
 
+  // retrieve lastcall
   time_t last_call = std::stol(spacedb.getSetting("LastCall", "0"));
+
+  // store now as lastcall
   time_t now =
       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
   spacedb.setSetting("LastCall", std::to_string(now));
 
+  // Have they used this door before?
   if (last_call != 0) {
     door << "Welcome Back!" << door::nl;
     auto nowClock = std::chrono::system_clock::from_time_t(now);
@@ -887,7 +1088,10 @@ int main(int argc, char *argv[]) {
     }
     press_a_key(door);
   }
+
   /*
+  // example:  saving the door.log() for global use.
+
   std::function<std::ofstream &(void)> get_logger;
 
   get_logger = [&door]() -> ofstream & { return door.log(); };
@@ -896,22 +1100,8 @@ int main(int argc, char *argv[]) {
     get_logger() << "MEOW" << std::endl;
     get_logger() << "hey! It works!" << std::endl;
   }
-  */
 
-  // spacedb.init();
-
-  /*
-  // Example:  How to read/set values in spacedb settings.
-    std::string setting = "last_play";
-    std::string user = door.username;
-    std::string value;
-    std::string blank = "<blank>";
-    value = spacedb.getSetting(user, setting, blank);
-
-    door << door::reset << "last_play: " << value << door::nl;
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    value = return_current_time_and_date();
-    spacedb.setSetting(user, setting, value);
+  get_logger = nullptr;  // before door destruction
   */
 
   // https://stackoverflow.com/questions/5008804/generating-random-integer-from-a-range
@@ -930,8 +1120,8 @@ int main(int argc, char *argv[]) {
     mx = door.width;
     my = door.height;
   }
-  // We assume here that the width and height are something crazy like 10x15.
-  // :P
+  // We assume here that the width and height aren't something crazy like 10x15.
+  // :P  (or 24x923!)
 
   display_starfield_space_ace(door, rng);
 
@@ -940,8 +1130,8 @@ int main(int argc, char *argv[]) {
 
   door::Panel timeout = make_timeout(mx, my);
   door::Menu m = make_main_menu();
-
   door::Panel about = make_about(); // 8 lines
+
   // center the about box
   about.set((mx - 60) / 2, (my - 9) / 2);
 
@@ -1037,8 +1227,6 @@ int main(int argc, char *argv[]) {
     goto TIMEOUT;
 
 */
-
-  door << door::nl;
 
 #ifdef NNY
 
