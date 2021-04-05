@@ -787,6 +787,18 @@ door::Panel make_commandline(void) {
   return p;
 }
 
+door::Panel make_tripeaks(void) {
+  std::string tripeaksText(" " SPACEACE
+                           " - Tri-Peaks Solitaire v" SPACEACE_VERSION " ");
+  door::Panel spaceAceTriPeaks(tripeaksText.size());
+  spaceAceTriPeaks.setStyle(door::BorderStyle::SINGLE);
+  spaceAceTriPeaks.setColor(
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
+  spaceAceTriPeaks.addLine(
+      std::make_unique<door::Line>(tripeaksText, tripeaksText.size()));
+  return spaceAceTriPeaks;
+}
+
 int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int mx = door.width;
   int my = door.height;
@@ -825,17 +837,10 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // The idea is to see the cards with <<Something Unique to the card game>>,
   // Year, Month, Day, and game (like 1 of 3).
   // This will make the games the same/fair for everyone.
-  std::string tripeaks(" " SPACEACE " - Tri-Peaks Solitaire v" SPACEACE_VERSION
-                       " ");
-  int tp_off_x = (mx - tripeaks.size()) / 2;
-  door::Panel spaceAceTriPeaks(tp_off_x, off_y, tripeaks.size());
 
-  spaceAceTriPeaks.setStyle(door::BorderStyle::SINGLE);
-  spaceAceTriPeaks.setColor(
-      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
-
-  spaceAceTriPeaks.addLine(
-      std::make_unique<door::Line>(tripeaks, tripeaks.size()));
+  door::Panel spaceAceTriPeaks = make_tripeaks();
+  int tp_off_x = (mx - spaceAceTriPeaks.getWidth()) / 2;
+  spaceAceTriPeaks.set(tp_off_x, off_y);
   door << spaceAceTriPeaks;
 
   off_y += 3;
@@ -845,10 +850,21 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
+  {
+    // step 1:
+    // draw the deck "source"
+    int cx, cy, level;
+    cardgo(29, space, height, cx, cy, level);
+    c = d.back(level);
+    c->set(cx + off_x, cy + off_y);
+    door << *c;
+    std::this_thread::sleep_for(std::chrono::milliseconds(125));
+  }
+
   // I tried setting the cursor before the delay and before displaying the
   // card. It is very hard to see / just about useless.  Not worth the effort.
 
-  for (int x = 0; x < 28; x++) {
+  for (int x = 0; x < 29; x++) {
     int cx, cy, level;
 
     cardgo(x, space, height, cx, cy, level);
@@ -861,7 +877,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     door << *c;
   }
 
-  for (int x = 18; x < 28; x++) {
+  for (int x = 18; x < 29; x++) {
     int cx, cy, level;
 
     state.at(x) = 1;
@@ -879,13 +895,21 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   door::Panel p2 = make_panel2();
   door::Panel pc = make_commandline();
 
-  p1.set(off_x + 3, off_y);
-  p2.set(off_x + 55, off_y);
-  pc.set(off_x + 3, off_y + 5);
+  {
+    int cxp, cyp, levelp;
+    int left_panel, right_panel;
+    // find position of card, to position the panels
+    cardgo(18, space, height, cxp, cyp, levelp);
+    left_panel = cxp;
+    cardgo(15, space, height, cxp, cyp, levelp);
+    right_panel = cxp;
+    p1.set(left_panel + off_x, off_y);
+    p2.set(right_panel + off_x, off_y);
+    pc.set(left_panel + off_x, off_y + 5);
+  }
 
   door << p1 << p2 << pc;
   door << door::reset;
-  door << door::nl;
 
   int r = door.sleep_key(door.inactivity);
   return r;

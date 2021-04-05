@@ -263,6 +263,21 @@ XXXXX   XXXXX   XXXXX
 width = 5 * 10 + (2 * 9) = 50+18 = 68   !  I could do that!
 */
 void cardgo(int pos, int space, int h, int &x, int &y, int &level) {
+  // special cases here
+  if (pos == 28) {
+    cardgo(23, space, h, x, y, level);
+    y += h + 1;
+    --level;
+    return;
+  } else {
+    if (pos == 29) {
+      cardgo(22, space, h, x, y, level);
+      y += h + 1;
+      --level;
+      return;
+    }
+  }
+
   const int CARD_WIDTH = 5;
   int HALF_WIDTH = 3;
   // space = 1 or 3
