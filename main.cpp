@@ -156,7 +156,6 @@ door::Panel make_notime(int mx, int my) {
   std::string line_text("Sorry, you've used up all your time for today.");
   int msgWidth = line_text.length() + (2 * 3); // + padding * 2
   door::Panel timeout((mx - (msgWidth)) / 2, my / 2 + 4, msgWidth);
-  // place.setTitle(std::make_unique<door::Line>(title), 1);
   timeout.setStyle(door::BorderStyle::DOUBLE);
   timeout.setColor(yellowred);
 
@@ -174,9 +173,7 @@ door::Panel make_notime(int mx, int my) {
   */
 
   base.setPadding(pad1, yellowred);
-  // base.setColor(door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLACK));
   std::unique_ptr<door::Line> stuff = std::make_unique<door::Line>(base);
-
   timeout.addLine(std::make_unique<door::Line>(base));
   return timeout;
 }
@@ -233,9 +230,29 @@ door::renderFunction statusValue(door::ANSIColor status,
 
     size_t pos = txt.find(':');
     if (pos == std::string::npos) {
-      // failed to find - use entire string as status color.
-      co.len = txt.length();
-      r.outputs.push_back(co);
+      // failed to find :, render digits/numbers in value color
+      int tpos = 0;
+      for (char const &c : txt) {
+        if (std::isdigit(c)) {
+          if (co.c != value) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+            co.c = value;
+          }
+        } else {
+          if (co.c != status) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+            co.c = status;
+          }
+        }
+        co.len++;
+        tpos++;
+      }
+      if (co.len != 0)
+        r.outputs.push_back(co);
     } else {
       pos++; // Have : in status color
       co.len = pos;
@@ -252,6 +269,7 @@ door::renderFunction statusValue(door::ANSIColor status,
   return rf;
 }
 
+/*
 door::renderFunction rStatus = [](const std::string &txt) -> door::Render {
   door::Render r(txt);
   door::ColorOutput co;
@@ -282,6 +300,7 @@ door::renderFunction rStatus = [](const std::string &txt) -> door::Render {
 
   return r;
 };
+*/
 
 std::string return_current_time_and_date() {
   auto now = std::chrono::system_clock::now();
@@ -335,6 +354,7 @@ door::Menu make_config_menu(void) {
   return m;
 }
 
+// all the possible deck colors
 vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
                                    std::string("Cyan"),    std::string("Green"),
                                    std::string("Magenta"), std::string("Red")};
@@ -343,9 +363,9 @@ vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
  * @brief menu render that sets the text color based on the color found in the
  * text itself.
  *
- * @param c1
- * @param c2
- * @param c3
+ * @param c1 [] brackets
+ * @param c2 text within brackets
+ * @param c3 base color give (we set the FG, we use the BG)
  * @return door::renderFunction
  */
 door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
@@ -383,7 +403,6 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
     co.pos = 0;
     co.len = 0;
     co.c = c1;
-    // d << blue;
 
     int tpos = 0;
     for (char const &c : txt) {
@@ -439,22 +458,6 @@ door::Menu make_deck_menu(void) {
 
   m.setTitle(std::make_unique<door::Line>(mtitle), 1);
 
-  /*
-    // m.setColorizer(true,
-    m.setRender(true, door::Menu::makeRender(
-                          door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
-                          door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
-                          door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
-                          door::ANSIColor(door::COLOR::BLUE,
-    door::ATTR::BOLD)));
-    // m.setColorizer(false,
-    m.setRender(false, door::Menu::makeRender(
-                           door::ANSIColor(door::COLOR::YELLOW,
-    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::WHITE,
-    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
-    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::CYAN,
-    door::COLOR::BLUE, door::ATTR::BOLD)));
-  */
   m.setRender(true, makeColorRender(
                         door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
                         door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
@@ -466,6 +469,8 @@ door::Menu make_deck_menu(void) {
                                          door::ATTR::BOLD),
                          door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                          door::ATTR::BOLD)));
+  // build the menu options from the colors.  First character = single letter
+  // option trigger.
   for (auto iter = deck_colors.begin(); iter != deck_colors.end(); ++iter) {
     char c = (*iter)[0];
     m.addSelection(c, (*iter).c_str());
@@ -482,6 +487,7 @@ door::Menu make_deck_menu(void) {
   return m;
 }
 
+// DOES THIS WORK?
 bool iequals(const string &a, const string &b) {
   unsigned int sz = a.size();
   if (b.size() != sz)
@@ -494,6 +500,7 @@ bool iequals(const string &a, const string &b) {
 
 // convert a string to an option
 // an option to the string to store
+// This needs to be updated to use deck_colors.
 door::ANSIColor from_string(std::string colorCode) {
   std::map<std::string, door::ANSIColor> codeMap = {
       {std::string("BLUE"), door::ANSIColor(door::COLOR::BLUE)},
@@ -586,7 +593,7 @@ door::Panel make_panel1(door::Door &door) {
                               door::ATTR::BOLD);
   door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                              door::ATTR::BOLD);
-  door::renderFunction svRender = renderStatusValue(statusColor, valueColor);
+  door::renderFunction svRender = statusValue(statusColor, valueColor);
   // or use renderStatus as defined above.
   // We'll stick with these for now.
 
@@ -650,7 +657,7 @@ door::Panel make_panel2(void) {
                               door::ATTR::BOLD);
   door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                              door::ATTR::BOLD);
-  door::renderFunction svRender = renderStatusValue(statusColor, valueColor);
+  door::renderFunction svRender = statusValue(statusColor, valueColor);
 
   {
     std::string text = "Playing: ";
@@ -684,6 +691,31 @@ door::Panel make_panel2(void) {
     p.addLine(std::make_unique<door::Line>(current));
   }
 
+  return p;
+}
+
+door::Panel make_panel3(void) {
+  const int W = 13;
+  door::Panel p(W);
+  p.setStyle(door::BorderStyle::NONE);
+  door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+  door::renderFunction svRender = statusValue(statusColor, valueColor);
+
+  {
+    door::updateFunction cardsleftUpdate = [](void) -> std::string {
+      std::string text = "Cards left:";
+      text.append(std::to_string(52 - card_number));
+      return text;
+    };
+    std::string cardsleftString = "Cards left:--";
+    door::Line cardsleft(cardsleftString, W);
+    cardsleft.setRender(svRender);
+    cardsleft.setUpdater(cardsleftUpdate);
+    p.addLine(std::make_unique<door::Line>(cardsleft));
+  }
   return p;
 }
 
@@ -825,7 +857,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 
   // int cards_dealt_width = 59; int cards_dealt_height = 9;
   int game_width;
-  int game_height = 13; // 9;
+  int game_height = 20; // 13; // 9;
   {
     int cx, cy, level;
     cardgo(27, space, height, cx, cy, level);
@@ -850,6 +882,25 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
+  door::Panel p1 = make_panel1(door);
+  door::Panel p2 = make_panel2();
+  door::Panel p3 = make_panel3();
+  door::Panel pc = make_commandline();
+
+  {
+    int off_yp = off_y + 11;
+    int cxp, cyp, levelp;
+    int left_panel, right_panel;
+    // find position of card, to position the panels
+    cardgo(18, space, height, cxp, cyp, levelp);
+    left_panel = cxp;
+    cardgo(15, space, height, cxp, cyp, levelp);
+    right_panel = cxp;
+    p1.set(left_panel + off_x, off_yp);
+    p2.set(right_panel + off_x, off_yp);
+    pc.set(left_panel + off_x, off_yp + 5);
+  }
+
   {
     // step 1:
     // draw the deck "source"
@@ -857,14 +908,17 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     cardgo(29, space, height, cx, cy, level);
     c = d.back(level);
     c->set(cx + off_x, cy + off_y);
+    // p3 is heigh below
+    p3.set(cx + off_x, cy + off_y + height);
+    door << p1 << p3 << p2 << pc;
     door << *c;
-    std::this_thread::sleep_for(std::chrono::milliseconds(125));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   // I tried setting the cursor before the delay and before displaying the
   // card. It is very hard to see / just about useless.  Not worth the effort.
 
-  for (int x = 0; x < 29; x++) {
+  for (int x = 0; x < 28; x++) {
     int cx, cy, level;
 
     cardgo(x, space, height, cx, cy, level);
@@ -890,25 +944,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     door << *c;
   }
 
-  off_y += 11;
-  door::Panel p1 = make_panel1(door);
-  door::Panel p2 = make_panel2();
-  door::Panel pc = make_commandline();
-
-  {
-    int cxp, cyp, levelp;
-    int left_panel, right_panel;
-    // find position of card, to position the panels
-    cardgo(18, space, height, cxp, cyp, levelp);
-    left_panel = cxp;
-    cardgo(15, space, height, cxp, cyp, levelp);
-    right_panel = cxp;
-    p1.set(left_panel + off_x, off_y);
-    p2.set(right_panel + off_x, off_y);
-    pc.set(left_panel + off_x, off_y + 5);
-  }
-
-  door << p1 << p2 << pc;
+  p3.update(door);
   door << door::reset;
 
   int r = door.sleep_key(door.inactivity);
@@ -965,7 +1001,7 @@ door::Panel make_about(void) {
     std::string current = updater();
     door::Line active(current, 60);
     active.setUpdater(updater);
-    active.setRender(renderStatusValue(
+    active.setRender(statusValue(
         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
     door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                         door::ATTR::BOLD)));
