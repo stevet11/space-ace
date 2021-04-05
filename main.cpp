@@ -39,7 +39,7 @@ std::function<std::ofstream &(void)> get_logger;
 unsigned long score = 0;
 int hand = 1;
 int total_hands = 3;
-int card_number = 29;
+int card_number = 28;
 int current_streak = 0;
 int best_streak = 0;
 std::chrono::_V2::system_clock::time_point play_day;
@@ -991,8 +991,11 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     if ((r < 0x1000) and (r > 0)) {
       r = std::toupper(r);
       if (r == ' ') {
-        if (card_number < 51)
+        if (card_number < 51) {
           card_number++;
+          // ok, we would redraw just that card here...
+          // only "exit" and redo the drawing loop when "R" redraw is used!
+        }
       }
     }
   }
@@ -1000,17 +1003,18 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 }
 
 door::Panel make_about(void) {
-  door::Panel about(60);
+  const int W = 60;
+  door::Panel about(W);
   about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
   about.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                  door::ATTR::BOLD));
 
-  about.addLine(std::make_unique<door::Line>("About This Door", 60));
+  about.addLine(std::make_unique<door::Line>("About This Door", W));
   about.addLine(std::make_unique<door::Line>(
-      "---------------------------------", 60,
+      "---------------------------------", W,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
   /*
-  123456789012345678901234567890123456789012345678901234567890
+  123456789012345678901234567890123456789012345678901234567890-60
   This door was written by Bugz.
 
   It is written in c++, only supports Linux, and replaces
@@ -1021,24 +1025,20 @@ door::Panel make_about(void) {
 
    */
   about.addLine(
-      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, 60));
+      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W));
   std::string copyright = SPACEACE_COPYRIGHT;
   if (door::unicode) {
-    /*
-    std::string textcp = "(C)";
-    std::string utf8cp = "\u00a9";
-    replace(copyright, textcp, utf8cp);*/
     replace(copyright, "(C)", "\u00a9");
   }
 
-  about.addLine(std::make_unique<door::Line>(copyright, 60));
-  about.addLine(std::make_unique<door::Line>("", 60));
+  about.addLine(std::make_unique<door::Line>(copyright, W));
+  about.addLine(std::make_unique<door::Line>("", W));
   about.addLine(
-      std::make_unique<door::Line>("This door was written by Bugz.", 60));
-  about.addLine(std::make_unique<door::Line>("", 60));
+      std::make_unique<door::Line>("This door was written by Bugz.", W));
+  about.addLine(std::make_unique<door::Line>("", W));
   about.addLine(std::make_unique<door::Line>(
-      "It is written in c++, only support Linux, and replaces", 60));
-  about.addLine(std::make_unique<door::Line>("opendoors.", 60));
+      "It is written in c++, only support Linux, and replaces", W));
+  about.addLine(std::make_unique<door::Line>("opendoors.", W));
 
   /*
     door::updateFunction updater = [](void) -> std::string {
@@ -1054,19 +1054,6 @@ door::Panel make_about(void) {
     door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                         door::ATTR::BOLD)));
     about.addLine(std::make_unique<door::Line>(active));
-  */
-
-  /*
-    about.addLine(std::make_unique<door::Line>(
-        "Status: blue", 60,
-        statusValue(door::ANSIColor(door::COLOR::GREEN, door::ATTR::BOLD),
-                    door::ANSIColor(door::COLOR::MAGENTA,
-    door::ATTR::BLINK)))); about.addLine(std::make_unique<door::Line>("Name:
-    BUGZ", 60, rStatus)); about.addLine(std::make_unique<door::Line>( "Size:
-    10240", 60, statusValue(door::ANSIColor(door::COLOR::GREEN,
-    door::COLOR::BLUE, door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
-    door::COLOR::BLUE, door::ATTR::BOLD, door::ATTR::BLINK))));
-    about.addLine(std::make_unique<door::Line>("Bugz is here.", 60, rStatus));
   */
 
   return about;
@@ -1182,6 +1169,7 @@ int main(int argc, char *argv[]) {
     int hours = chrono::duration_cast<chrono::hours>(delta).count();
     int days = hours / 24;
     int minutes = chrono::duration_cast<chrono::minutes>(delta).count();
+    int secs = chrono::duration_cast<chrono::seconds>(delta).count();
 
     if (days > 1) {
       door << "It's been " << days << " days since you last played."
@@ -1191,8 +1179,14 @@ int main(int argc, char *argv[]) {
         door << "It's been " << hours << " hours since you last played."
              << door::nl;
       } else {
-        door << "It's been " << minutes << " minutes since you last played."
-             << door::nl;
+        if (minutes > 1) {
+          door << "It's been " << minutes << " minutes since you last played."
+               << door::nl;
+        } else {
+          door << "It's been " << secs << " seconds since you last played."
+               << door::nl;
+          door << "It's like you never left." << door::nl;
+        }
       }
     }
     press_a_key(door);
