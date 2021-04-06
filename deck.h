@@ -35,7 +35,8 @@ Cards start at 0, not 1!
  [4/<] Left [6/>] Right [Space] Play Card [Enter] Draw [Q]uit [R]edraw [H]elp
 
 ^ -- above is 20 lines from +-- to [4/<] < Left
-
+  score_panel                    left_panel          streak_panel
+                                 command_panel
 
                            #####
 Player Information         #####        Time in: xx Time out: xx
@@ -84,9 +85,11 @@ private:
   door::ANSIColor cardback;
   vector<door::Panel *> cards;
   vector<door::Panel *> backs;
+  vector<door::Panel *> mark;
   door::Panel *card_of(int c);
   std::string back_char(int level);
   door::Panel *back_of(int level);
+  door::Panel *mark_of(int c);
   int is_rank(int c);
   int is_suit(int c);
   int is_deck(int c);
@@ -104,6 +107,7 @@ public:
 
   door::Panel *card(int c);
   door::Panel *back(int level);
+  door::Panel *marker(int c);
   void part(int x, int y, door::Door &d, int level, bool left);
   int unblocks(int c);
   const static std::array<std::pair<int, int>, 18> blocks;
@@ -132,5 +136,4 @@ void cardgo(int pos, int space, int h, int &x, int &y, int &level);
  * @return vector<int>
  */
 cards card_shuffle(std::seed_seq &seed, int decks = 1);
-
 cards card_states(int decks = 1);

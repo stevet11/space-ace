@@ -27,6 +27,8 @@ void Deck::init(void) {
   for (int i = 0; i < 5; ++i) {
     backs.push_back(back_of(i));
   }
+  mark.push_back(mark_of(0));
+  mark.push_back(mark_of(1));
 }
 
 Deck::~Deck() {
@@ -38,6 +40,10 @@ Deck::~Deck() {
     delete b;
   }
   backs.clear();
+  for (auto m : mark) {
+    delete m;
+  }
+  mark.clear();
 }
 
 int Deck::is_deck(int c) { return c / 52; }
@@ -193,6 +199,24 @@ door::Panel *Deck::back_of(int level) {
   return p;
 }
 
+door::Panel *Deck::mark_of(int c) {
+  door::Panel *p = new door::Panel(1);
+  door::ANSIColor color = door::ANSIColor(
+      door::COLOR::BLUE, door::COLOR::WHITE); // , door::ATTR::BOLD);
+  std::string m;
+  if (c == 0)
+    m = " ";
+  else {
+    if (door::unicode) {
+      m = "\u25a0";
+    } else {
+      m = "\xfe";
+    }
+  }
+  p->addLine(std::make_unique<door::Line>(m, 1, color));
+  return p;
+}
+
 void Deck::part(int x, int y, door::Door &d, int level, bool left) {
   // Render part of the back of a card.
   y += 2;
@@ -233,6 +257,8 @@ int Deck::unblocks(int c) {
   }
   return -1;
 }
+
+door::Panel *Deck::marker(int c) { return mark[c]; }
 
 /*
 Layout spacing 1:

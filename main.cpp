@@ -42,6 +42,8 @@ int total_hands = 3;
 int card_number = 28;
 int current_streak = 0;
 int best_streak = 0;
+int active_card = 23;
+
 std::chrono::_V2::system_clock::time_point play_day;
 
 /*
@@ -585,7 +587,7 @@ int configure(door::Door &door, DBData &db) {
   return r;
 }
 
-door::Panel make_panel1(door::Door &door) {
+door::Panel make_score_panel(door::Door &door) {
   const int W = 25;
   door::Panel p(W);
   p.setStyle(door::BorderStyle::NONE);
@@ -649,7 +651,7 @@ door::Panel make_panel1(door::Door &door) {
   return p;
 }
 
-door::Panel make_panel2(void) {
+door::Panel make_streak_panel(void) {
   const int W = 20;
   door::Panel p(W);
   p.setStyle(door::BorderStyle::NONE);
@@ -694,7 +696,7 @@ door::Panel make_panel2(void) {
   return p;
 }
 
-door::Panel make_panel3(void) {
+door::Panel make_left_panel(void) {
   const int W = 13;
   door::Panel p(W);
   p.setStyle(door::BorderStyle::NONE);
@@ -788,7 +790,7 @@ door::renderFunction commandLineRender(door::ANSIColor bracket,
   return rf;
 }
 
-door::Panel make_commandline(void) {
+door::Panel make_command_panel(void) {
   const int W = 76;
   door::Panel p(W);
   p.setStyle(door::BorderStyle::NONE);
@@ -835,6 +837,11 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int mx = door.width;
   int my = door.height;
 
+  // init these values:
+  card_number = 28;
+  active_card = 23;
+  score = 0;
+
   // cards color --
   // configured by the player.
 
@@ -880,28 +887,30 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
-  door::Panel p1 = make_panel1(door);
-  door::Panel p2 = make_panel2();
-  door::Panel p3 = make_panel3();
-  door::Panel pc = make_commandline();
+  door::Panel score_panel = make_score_panel(door);
+  door::Panel streak_panel = make_streak_panel();
+  door::Panel left_panel = make_left_panel();
+  door::Panel cmd_panel = make_command_panel();
 
   {
     int off_yp = off_y + 11;
     int cxp, cyp, levelp;
-    int left_panel, right_panel;
+    int left_panel_x, right_panel_x;
     // find position of card, to position the panels
     cardgo(18, space, height, cxp, cyp, levelp);
-    left_panel = cxp;
+    left_panel_x = cxp;
     cardgo(15, space, height, cxp, cyp, levelp);
-    right_panel = cxp;
-    p1.set(left_panel + off_x, off_yp);
-    p2.set(right_panel + off_x, off_yp);
-    pc.set(left_panel + off_x, off_yp + 5);
+    right_panel_x = cxp;
+    score_panel.set(left_panel_x + off_x, off_yp);
+    streak_panel.set(right_panel_x + off_x, off_yp);
+    cmd_panel.set(left_panel_x + off_x, off_yp + 5);
   }
 
   bool dealing = true;
   int r = 0;
   while ((r >= 0) and (r != 'Q')) {
+
+    // REDRAW everything
 
     door << door::reset << door::cls;
     door << spaceAceTriPeaks;
@@ -917,8 +926,8 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
       c = d.back(level);
       c->set(cx + off_x, cy + off_y);
       // p3 is heigh below
-      p3.set(cx + off_x, cy + off_y + height);
-      door << p1 << p3 << p2 << pc;
+      left_panel.set(cx + off_x, cy + off_y + height);
+      door << score_panel << left_panel << streak_panel << cmd_panel;
       door << *c;
       if (dealing)
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -979,24 +988,107 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         c->set(cx + off_x, cy + off_y);
         door << *c;
       }
-    else {
-      // setup the "next card" @ 28
+
+    {
+      int cx, cy, level;
+      cardgo(active_card, space, height, cx, cy, level);
+      c = d.marker(1);
+      c->set(cx + off_x + 2, cy + off_y + 2);
+      door << *c;
     }
+
     dealing = false;
 
-    p3.update(door);
+    left_panel.update(door);
     door << door::reset;
 
-    r = door.sleep_key(door.inactivity);
-    if ((r < 0x1000) and (r > 0)) {
-      r = std::toupper(r);
-      if (r == ' ') {
-        if (card_number < 51) {
-          card_number++;
-          // ok, we would redraw just that card here...
-          // only "exit" and redo the drawing loop when "R" redraw is used!
+    bool now_what = true;
+    while (now_what) {
+      // time might have updated, so update score panel too.
+      score_panel.update(door);
+
+      r = door.sleep_key(door.inactivity);
+      if (r > 0) {
+        // They didn't timeout/expire.  They didn't press a function key.
+        if (r < 0x1000)
+          r = std::toupper(r);
+        switch (r) {
+        case ' ':
+          if (card_number < 51) {
+            card_number++;
+
+            // Ok, deal next card from the pile.
+            int cx, cy, level;
+
+            if (card_number == 51) {
+              cardgo(29, space, height, cx, cy, level);
+              level = 0; // out of cards
+              c = d.back(level);
+              c->set(cx + off_x, cy + off_y);
+              door << *c;
+            }
+            cardgo(28, space, height, cx, cy, level);
+            c = d.card(deck1.at(card_number));
+            c->set(cx + off_x, cy + off_y);
+            door << *c;
+            // update the cards left_panel
+            left_panel.update(door);
+          }
+          break;
+        case 'R':
+          now_what = false;
+          break;
+        case 'Q':
+          now_what = false;
+          break;
+        case XKEY_LEFT_ARROW:
+        case '4': {
+          int new_active = active_card - 1;
+          while (new_active >= 0) {
+            if (state.at(new_active) == 1)
+              break;
+            --new_active;
+          }
+          if (new_active >= 0) {
+
+            int cx, cy, level;
+            cardgo(active_card, space, height, cx, cy, level);
+            c = d.marker(0);
+            c->set(cx + off_x + 2, cy + off_y + 2);
+            door << *c;
+            active_card = new_active;
+            cardgo(active_card, space, height, cx, cy, level);
+            c = d.marker(1);
+            c->set(cx + off_x + 2, cy + off_y + 2);
+            door << *c;
+          }
+        } break;
+        case XKEY_RIGHT_ARROW:
+        case '6': {
+          int new_active = active_card + 1;
+          while (new_active < 28) {
+            if (state.at(new_active) == 1)
+              break;
+            ++new_active;
+          }
+          if (new_active < 28) {
+            int cx, cy, level;
+            cardgo(active_card, space, height, cx, cy, level);
+            c = d.marker(0);
+            c->set(cx + off_x + 2, cy + off_y + 2);
+            door << *c;
+            active_card = new_active;
+            cardgo(active_card, space, height, cx, cy, level);
+            c = d.marker(1);
+            c->set(cx + off_x + 2, cy + off_y + 2);
+            door << *c;
+          }
         }
-      }
+
+        break;
+        }
+      } else
+        now_what = false;
     }
   }
   return r;
@@ -1051,8 +1143,8 @@ door::Panel make_about(void) {
     active.setUpdater(updater);
     active.setRender(statusValue(
         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
-    door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                        door::ATTR::BOLD)));
+    door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
+    door::COLOR::BLUE, door::ATTR::BOLD)));
     about.addLine(std::make_unique<door::Line>(active));
   */
 
@@ -1164,8 +1256,8 @@ int main(int argc, char *argv[]) {
     auto lastClock = std::chrono::system_clock::from_time_t(last_call);
     auto delta = nowClock - lastClock;
 
-    // int days = chrono::duration_cast<chrono::days>(delta).count();  // c++
-    // 20
+    // int days = chrono::duration_cast<chrono::days>(delta).count();  //
+    // c++ 20
     int hours = chrono::duration_cast<chrono::hours>(delta).count();
     int days = hours / 24;
     int minutes = chrono::duration_cast<chrono::minutes>(delta).count();
@@ -1212,7 +1304,8 @@ int main(int argc, char *argv[]) {
   std::random_device rd; // only used once to initialise (seed) engine
   std::mt19937 rng(rd());
   // random-number engine used (Mersenne-Twister in this case)
-  // std::uniform_int_distribution<int> uni(min, max); // guaranteed unbiased
+  // std::uniform_int_distribution<int> uni(min, max); // guaranteed
+  // unbiased
 
   int mx, my; // Max screen width/height
   if (door.width == 0) {
@@ -1380,16 +1473,17 @@ int main(int argc, char *argv[]) {
   int off_x = (mx - game_width) / 2;
   int off_y = (my - 9) / 2;
 
-  // The idea is to see the cards with <<Something Unique to the card game>>,
-  // Year, Month, Day, and game (like 1 of 3).
-  // This will make the games the same/fair for everyone.
+  // The idea is to see the cards with <<Something Unique to the card
+  // game>>, Year, Month, Day, and game (like 1 of 3). This will make the
+  // games the same/fair for everyone.
 
   std::seed_seq s1{2021, 2, 27, 1};
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
   // I tried setting the cursor before the delay and before displaying the
-  // card. It is very hard to see / just about useless.  Not worth the effort.
+  // card. It is very hard to see / just about useless.  Not worth the
+  // effort.
 
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
