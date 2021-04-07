@@ -90,9 +90,6 @@ private:
   std::string back_char(int level);
   door::Panel *back_of(int level);
   door::Panel *mark_of(int c);
-  int is_rank(int c);
-  int is_suit(int c);
-  int is_deck(int c);
   void init(void);
   char rank_symbol(int c);
   std::string suit_symbol(int c);
@@ -105,16 +102,51 @@ public:
   Deck(door::ANSIColor backcolor, int size = 3);
   ~Deck();
 
+  int is_rank(int c);
+  int is_suit(int c);
+  int is_deck(int c);
+  /**
+   * @brief Can this rank play on this other rank?
+   *
+   * @param c1
+   * @param c2
+   * @return true
+   * @return false
+   */
+  bool can_play(int c1, int c2);
+
   door::Panel *card(int c);
+  /**
+   * @brief Return panel for back of card.
+   *
+   * 0 = Blank
+   * 1 = level 1 (furthest/darkest)
+   * 2 = level 2
+   * 3 = level 3
+   * 4 = level 4 (closest/lightest)
+   *
+   * 5 = left (fills with left corner in place)
+   * 6 = right (fills right corner)
+   * 7 = both (fills both corners)
+   *
+   * @param level
+   * @return door::Panel*
+   */
   door::Panel *back(int level);
   door::Panel *marker(int c);
   void part(int x, int y, door::Door &d, int level, bool left);
-  int unblocks(int c);
+  std::vector<int> unblocks(int c);
   const static std::array<std::pair<int, int>, 18> blocks;
+
+  void remove_card(door::Door &door, int c, int off_x, int off_y, bool left,
+                   bool right);
 };
 
 /**
  * @brief Given a position, space=3, height=3, return x,y and level.
+ *
+ * This is the older version that allows for space and h "height"
+ * to be variable.  I'd rather have one that has them as constants.
  *
  * @param pos
  * @param space
@@ -123,7 +155,20 @@ public:
  * @param y
  * @param level
  */
-void cardgo(int pos, int space, int h, int &x, int &y, int &level);
+[[deprecated("Use cardgo(int pos, int &x, int &y, int &level")]] void
+cardgo(int pos, int space, int h, int &x, int &y, int &level);
+
+/**
+ * @brief Where does this card go?
+ *
+ * This finds x, y, and the level (for the card background)
+ *
+ * @param pos
+ * @param x
+ * @param y
+ * @param level
+ */
+void cardgo(int pos, int &x, int &y, int &level);
 
 /**
  * @brief shuffle deck of cards
@@ -137,3 +182,17 @@ void cardgo(int pos, int space, int h, int &x, int &y, int &level);
  */
 cards card_shuffle(std::seed_seq &seed, int decks = 1);
 cards card_states(int decks = 1);
+
+/**
+ * @brief Find the next card to move to.
+ *
+ * if (left) .. to the left, otherwise right
+ * current is the current position we're on.
+ *
+ * return -1 failed to find anything.
+ * @param left
+ * @param states
+ * @param current
+ * @return int
+ */
+int find_next(bool left, const cards &states, int current);

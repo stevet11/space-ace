@@ -533,9 +533,7 @@ door::ANSIColor from_string(std::string colorCode) {
 }
 
 // This does not seem to be working.  I keep getting zero.
-
 int opt_from_string(std::string colorCode) {
-
   for (std::size_t pos = 0; pos != deck_colors.size(); ++pos) {
     // if (caseInsensitiveStringCompare(colorCode, deck_colors[pos]) == 0) {
     if (iequals(colorCode, deck_colors[pos])) {
@@ -667,6 +665,9 @@ door::Panel make_streak_panel(void) {
     std::stringstream ss;
     ss << std::put_time(std::localtime(&in_time_t), "%B %d");
     text.append(ss.str());
+    door::Line current(text, W);
+    current.setRender(svRender);
+    p.addLine(std::make_unique<door::Line>(current));
   }
   {
     door::updateFunction currentUpdate = [](void) -> std::string {
@@ -841,6 +842,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   card_number = 28;
   active_card = 23;
   score = 0;
+  play_day = std::chrono::system_clock::now();
 
   // cards color --
   // configured by the player.
@@ -866,7 +868,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   int game_height = 20; // 13; // 9;
   {
     int cx, cy, level;
-    cardgo(27, space, height, cx, cy, level);
+    cardgo(27, cx, cy, level);
     game_width = cx + 5; // card width
   }
   int off_x = (mx - game_width) / 2;
@@ -897,9 +899,9 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     int cxp, cyp, levelp;
     int left_panel_x, right_panel_x;
     // find position of card, to position the panels
-    cardgo(18, space, height, cxp, cyp, levelp);
+    cardgo(18, cxp, cyp, levelp);
     left_panel_x = cxp;
-    cardgo(15, space, height, cxp, cyp, levelp);
+    cardgo(15, cxp, cyp, levelp);
     right_panel_x = cxp;
     score_panel.set(left_panel_x + off_x, off_yp);
     streak_panel.set(right_panel_x + off_x, off_yp);
@@ -919,7 +921,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
       // step 1:
       // draw the deck "source"
       int cx, cy, level;
-      cardgo(29, space, height, cx, cy, level);
+      cardgo(29, cx, cy, level);
 
       if (card_number == 51)
         level = 0; // out of cards!
@@ -939,7 +941,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
     for (int x = 0; x < (dealing ? 28 : 29); x++) {
       int cx, cy, level;
 
-      cardgo(x, space, height, cx, cy, level);
+      cardgo(x, cx, cy, level);
       // This is hardly visible.
       // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
       if (dealing)
@@ -980,7 +982,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         int cx, cy, level;
 
         state.at(x) = 1;
-        cardgo(x, space, height, cx, cy, level);
+        cardgo(x, cx, cy, level);
         // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -991,7 +993,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 
     {
       int cx, cy, level;
-      cardgo(active_card, space, height, cx, cy, level);
+      cardgo(active_card, cx, cy, level);
       c = d.marker(1);
       c->set(cx + off_x + 2, cy + off_y + 2);
       door << *c;
@@ -1013,21 +1015,23 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         if (r < 0x1000)
           r = std::toupper(r);
         switch (r) {
-        case ' ':
+        case '\x0d':
           if (card_number < 51) {
             card_number++;
+            current_streak = 0;
+            streak_panel.update(door);
 
             // Ok, deal next card from the pile.
             int cx, cy, level;
 
             if (card_number == 51) {
-              cardgo(29, space, height, cx, cy, level);
+              cardgo(29, cx, cy, level);
               level = 0; // out of cards
               c = d.back(level);
               c->set(cx + off_x, cy + off_y);
               door << *c;
             }
-            cardgo(28, space, height, cx, cy, level);
+            cardgo(28, cx, cy, level);
             c = d.card(deck1.at(card_number));
             c->set(cx + off_x, cy + off_y);
             door << *c;
@@ -1041,23 +1045,161 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         case 'Q':
           now_what = false;
           break;
+        case ' ':
+          // can we play this card?
+          /*
+          get_logger() << "can_play( " << active_card << ":"
+                       << deck1.at(active_card) << "/"
+                       << d.is_rank(deck1.at(active_card)) << " , "
+                       << card_number << "/" << d.is_rank(deck1.at(card_number))
+                       << ") = "
+                       << d.can_play(deck1.at(active_card),
+                                     deck1.at(card_number))
+                       << std::endl;
+                       */
+
+          if (d.can_play(deck1.at(active_card), deck1.at(card_number))) {
+            // if (true) {
+            // yes we can.
+            ++current_streak;
+            if (current_streak > best_streak)
+              best_streak = current_streak;
+            streak_panel.update(door);
+
+            // play card!
+            state.at(active_card) = 2;
+            {
+              // swap the active card with card_number (play card)
+              int temp = deck1.at(active_card);
+              deck1.at(active_card) = deck1.at(card_number);
+              deck1.at(card_number) = temp;
+              // active_card is -- invalidated here!  find "new" card.
+              int cx, cy, level;
+
+              // erase/clear active_card
+              std::vector<int> check = d.unblocks(active_card);
+              bool left = false, right = false;
+              for (const int c : check) {
+                std::pair<int, int> blockers = d.blocks[c];
+                if (blockers.first == active_card)
+                  right = true;
+                if (blockers.second == active_card)
+                  left = true;
+              }
+
+              d.remove_card(door, active_card, off_x, off_y, left, right);
+
+              /*   // old way of doing this that leaves holes.
+              cardgo(active_card, cx, cy, level);
+              c = d.back(0);
+              c->set(cx + off_x, cy + off_y);
+              door << *c;
+              */
+
+              // redraw play card #28. (Which is the "old" active_card)
+              cardgo(28, cx, cy, level);
+              c = d.card(deck1.at(card_number));
+              c->set(cx + off_x, cy + off_y);
+              door << *c;
+
+              // Did we unhide a card here?
+
+              // std::vector<int> check = d.unblocks(active_card);
+
+              /*
+              get_logger() << "active_card = " << active_card
+                           << " unblocks: " << check.size() << std::endl;
+              */
+              int new_card_shown = -1;
+              if (!check.empty()) {
+                for (const int to_check : check) {
+                  std::pair<int, int> blockers = d.blocks[to_check];
+                  /*
+                  get_logger()
+                      << "Check: " << to_check << " " << blockers.first << ","
+                      << blockers.second << " " << state.at(blockers.first)
+                      << "," << state.at(blockers.second) << std::endl;
+                      */
+                  if ((state.at(blockers.first) == 2) and
+                      (state.at(blockers.second) == 2)) {
+                    // WOOT!  Card uncovered.
+                    /*
+                    get_logger() << "showing: " << to_check << std::endl;
+                    */
+                    state.at(to_check) = 1;
+                    cardgo(to_check, cx, cy, level);
+                    c = d.card(deck1.at(to_check));
+                    c->set(cx + off_x, cy + off_y);
+                    door << *c;
+                    new_card_shown = to_check;
+                  }
+                }
+              } else {
+                // this would be a "top" card.  Should set status = 4 and
+                // display something here?
+                get_logger() << "top card cleared?" << std::endl;
+                // display something at active_card position
+                int cx, cy, level;
+                cardgo(active_card, cx, cy, level);
+                door << door::Goto(cx + off_x, cy + off_y) << door::reset
+                     << "clear";
+              }
+
+              // Find new "number" for active_card to be.
+              if (new_card_shown != -1) {
+                active_card = new_card_shown;
+              } else {
+                // active_card++;
+                int new_active = active_card - 1;
+                while (new_active >= 0) {
+                  if (state.at(new_active) == 1)
+                    break;
+                  --new_active;
+                }
+                if (new_active >= 0) {
+                  active_card = new_active;
+                } else {
+                  // ok, we failed to find a card that way, look the other way.
+                  new_active = active_card + 1;
+                  while (new_active <= 28) {
+                    if (state.at(new_active) == 1)
+                      break;
+                    ++new_active;
+                  }
+                  if (new_active < 28) {
+                    active_card = new_active;
+                  } else {
+                    get_logger() << "This looks like END OF GAME." << std::endl;
+                  }
+                }
+              }
+              // update the active_card marker!
+              cardgo(active_card, cx, cy, level);
+              c = d.marker(1);
+              c->set(cx + off_x + 2, cy + off_y + 2);
+              door << *c;
+            }
+          }
+          break;
         case XKEY_LEFT_ARROW:
         case '4': {
+          int new_active = find_next(true, state, active_card);
+          /*
           int new_active = active_card - 1;
           while (new_active >= 0) {
             if (state.at(new_active) == 1)
               break;
             --new_active;
-          }
+          }*/
           if (new_active >= 0) {
 
             int cx, cy, level;
-            cardgo(active_card, space, height, cx, cy, level);
+            cardgo(active_card, cx, cy, level);
             c = d.marker(0);
             c->set(cx + off_x + 2, cy + off_y + 2);
             door << *c;
             active_card = new_active;
-            cardgo(active_card, space, height, cx, cy, level);
+            cardgo(active_card, cx, cy, level);
             c = d.marker(1);
             c->set(cx + off_x + 2, cy + off_y + 2);
             door << *c;
@@ -1065,20 +1207,23 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         } break;
         case XKEY_RIGHT_ARROW:
         case '6': {
+          int new_active = find_next(false, state, active_card);
+          /*
           int new_active = active_card + 1;
           while (new_active < 28) {
             if (state.at(new_active) == 1)
               break;
             ++new_active;
           }
-          if (new_active < 28) {
+          */
+          if (new_active >= 0) { //(new_active < 28) {
             int cx, cy, level;
-            cardgo(active_card, space, height, cx, cy, level);
+            cardgo(active_card, cx, cy, level);
             c = d.marker(0);
             c->set(cx + off_x + 2, cy + off_y + 2);
             door << *c;
             active_card = new_active;
-            cardgo(active_card, space, height, cx, cy, level);
+            cardgo(active_card, cx, cy, level);
             c = d.marker(1);
             c->set(cx + off_x + 2, cy + off_y + 2);
             door << *c;
