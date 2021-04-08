@@ -132,7 +132,17 @@ public:
    * @param level
    * @return door::Panel*
    */
+
   door::Panel *back(int level);
+  /**
+   * @brief Returns marker
+   *
+   * 0 = blank
+   * 1 = [] symbol thing \xfe ■
+   *
+   * @param c
+   * @return door::Panel*
+   */
   door::Panel *marker(int c);
   void part(int x, int y, door::Door &d, int level, bool left);
   std::vector<int> unblocks(int c);
@@ -181,6 +191,17 @@ void cardgo(int pos, int &x, int &y, int &level);
  * @return vector<int>
  */
 cards card_shuffle(std::seed_seq &seed, int decks = 1);
+
+/**
+ * @brief return vector of card states
+ *
+ * These are pre-initialized to 0.
+ * Default to 1 deck (0-51), but this handles any number of decks.
+ *
+ * @param decks
+ * @return cards
+ */
+
 cards card_states(int decks = 1);
 
 /**
@@ -197,4 +218,15 @@ cards card_states(int decks = 1);
  */
 int find_next(bool left, const cards &states, int current);
 
+/**
+ * @brief Find the next closest card to move to.
+ *
+ * Given the card states, this finds the next closest card.
+ * Uses current.
+ *
+ * return -1 there's no options to go to.  (END OF GAME)
+ * @param states
+ * @param current
+ * @return int
+ */
 int find_next_closest(const cards &states, int current);
