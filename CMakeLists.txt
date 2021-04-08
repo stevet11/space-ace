@@ -57,6 +57,13 @@ set(SQLITECPP_RUN_CPPCHECK OFF CACHE BOOL "" FORCE)
 set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)
 add_subdirectory(SQLiteCpp)
 
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp)
+  message("***")
+  message("*** ERROR/MISSING *** please run: git clone https://github.com/jbeder/yaml-cpp.git")
+  message("***")
+endif()
+
+add_subdirectory(yaml-cpp)
 
 add_executable(space-ace main.cpp deck.cpp db.h db.cpp images.h)
 target_link_libraries(space-ace door++ pthread SQLiteCpp sqlite3 dl)
