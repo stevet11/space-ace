@@ -111,14 +111,6 @@ line of the previous line/card.
 
  */
 
-// The idea is that this would be defined elsewhere (maybe)
-int user_score = 0;
-
-// NOTE:  When run as a door, we always detect CP437 (because that's what Enigma
-// is defaulting to)
-
-void adjust_score(int by) { user_score += by; }
-
 door::Panel make_timeout(int mx, int my) {
   door::ANSIColor yellowred =
       door::ANSIColor(door::COLOR::YELLOW, door::COLOR::RED, door::ATTR::BOLD);
@@ -841,6 +833,7 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   // init these values:
   card_number = 28;
   active_card = 23;
+  hand = 1;
   score = 0;
   play_day = std::chrono::system_clock::now();
 
@@ -854,14 +847,14 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   door.log() << key << " shows as " << currentDefault << std::endl;
   deck_color = from_string(currentDefault);
 
-  int height = 3;
-  Deck d(deck_color, height);
+  const int height = 3;
+  Deck d(deck_color); // , height);
   door::Panel *c;
 
   // This displays the cards in the upper left corner.
   // We want them center, and down some.
 
-  const int space = 3;
+  // const int space = 3;
 
   // int cards_dealt_width = 59; int cards_dealt_height = 9;
   int game_width;
@@ -873,10 +866,17 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   }
   int off_x = (mx - game_width) / 2;
   int off_y = (my - game_height) / 2;
-
+  int true_off_y = off_y;
   // The idea is to see the cards with <<Something Unique to the card game>>,
   // Year, Month, Day, and game (like 1 of 3).
   // This will make the games the same/fair for everyone.
+
+next_hand:
+
+  card_number = 28;
+  active_card = 23;
+  score = 0;
+  off_y = true_off_y;
 
   door::Panel spaceAceTriPeaks = make_tripeaks();
   int tp_off_x = (mx - spaceAceTriPeaks.getWidth()) / 2;
@@ -885,7 +885,19 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
   off_y += 3;
 
   // figure out what date we're playing / what game we're playing
-  std::seed_seq s1{2021, 2, 27, 1};
+  time_t tt = std::chrono::system_clock::to_time_t(play_day);
+  tm local_tm = *localtime(&tt);
+  /*
+  std::cout << utc_tm.tm_year + 1900 << '-';
+  std::cout << utc_tm.tm_mon + 1 << '-';
+  std::cout << utc_tm.tm_mday << ' ';
+  std::cout << utc_tm.tm_hour << ':';
+  std::cout << utc_tm.tm_min << ':';
+  std::cout << utc_tm.tm_sec << '\n';
+  */
+
+  std::seed_seq s1{local_tm.tm_year + 1900, local_tm.tm_mon + 1,
+                   local_tm.tm_mday, hand};
   cards deck1 = card_shuffle(s1, 1);
   cards state = card_states();
 
@@ -910,8 +922,8 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
 
   bool dealing = true;
   int r = 0;
-  while ((r >= 0) and (r != 'Q')) {
 
+  while ((r >= 0) and (r != 'Q')) {
     // REDRAW everything
 
     door << door::reset << door::cls;
@@ -1065,6 +1077,9 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
             if (current_streak > best_streak)
               best_streak = current_streak;
             streak_panel.update(door);
+            score += 10;
+            if (current_streak > 2)
+              score += 5;
 
             // play card!
             state.at(active_card) = 2;
@@ -1142,7 +1157,9 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
                 int cx, cy, level;
                 cardgo(active_card, cx, cy, level);
                 door << door::Goto(cx + off_x, cy + off_y) << door::reset
-                     << "clear";
+                     << "BONUS";
+                score += 100;
+                state.at(active_card) = 3; // handle this in the "redraw"
               }
 
               // Find new "number" for active_card to be.
@@ -1150,27 +1167,21 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
                 active_card = new_card_shown;
               } else {
                 // active_card++;
-                int new_active = active_card - 1;
-                while (new_active >= 0) {
-                  if (state.at(new_active) == 1)
-                    break;
-                  --new_active;
-                }
-                if (new_active >= 0) {
+                int new_active = find_next_closest(state, active_card);
+
+                if (new_active != -1) {
                   active_card = new_active;
                 } else {
-                  // ok, we failed to find a card that way, look the other way.
-                  new_active = active_card + 1;
-                  while (new_active <= 28) {
-                    if (state.at(new_active) == 1)
-                      break;
-                    ++new_active;
+                  get_logger() << "This looks like END OF GAME." << std::endl;
+                  // bonus for cards left
+                  press_a_key(door);
+                  if (hand < total_hands) {
+                    hand++;
+                    door << door::reset << door::cls;
+                    goto next_hand;
                   }
-                  if (new_active < 28) {
-                    active_card = new_active;
-                  } else {
-                    get_logger() << "This looks like END OF GAME." << std::endl;
-                  }
+                  r = 'Q';
+                  now_what = false;
                 }
               }
               // update the active_card marker!
@@ -1234,6 +1245,14 @@ int play_cards(door::Door &door, DBData &db, std::mt19937 &rng) {
         }
       } else
         now_what = false;
+    }
+  }
+  if (r == 'Q') {
+    if (hand < total_hands) {
+      press_a_key(door);
+      hand++;
+      door << door::reset << door::cls;
+      goto next_hand;
     }
   }
   return r;

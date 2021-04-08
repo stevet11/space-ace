@@ -196,3 +196,5 @@ cards card_states(int decks = 1);
  * @return int
  */
 int find_next(bool left, const cards &states, int current);
+
+int find_next_closest(const cards &states, int current);

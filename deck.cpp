@@ -553,3 +553,32 @@ int find_next(bool left, const cards &states, int current) {
   }
   return pos;
 }
+
+int find_next_closest(const cards &states, int current) {
+  int cx, cy, level;
+  int current_x;
+  cardgo(current, cx, cy, level);
+  current_x = cx;
+  int x;
+  int pos = -1;
+  int pos_x = -1;
+
+  for (x = 0; x < 28; x++) {
+    if (states.at(x) == 1) {
+      // possible location
+      if (x == current)
+        continue;
+      cardgo(x, cx, cy, level);
+      if (pos == -1) {
+        pos = x;
+        pos_x = cx;
+      } else {
+        if (abs(current_x - cx) < abs(current_x - pos_x)) {
+          pos = x;
+          pos_x = cx;
+        }
+      }
+    }
+  }
+  return pos;
+}
