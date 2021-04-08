@@ -1058,6 +1058,7 @@ next_hand:
           now_what = false;
           break;
         case ' ':
+        case '5':
           // can we play this card?
           /*
           get_logger() << "can_play( " << active_card << ":"
@@ -1248,6 +1249,7 @@ next_hand:
     }
   }
   if (r == 'Q') {
+    // continue with hand or quit?
     if (hand < total_hands) {
       press_a_key(door);
       hand++;
