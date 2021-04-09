@@ -1,6 +1,7 @@
 #include "deck.h"
 
 #include <algorithm>
+#include <map>
 #include <sstream>
 
 Deck::Deck(int size) {
@@ -44,6 +45,47 @@ Deck::~Deck() {
     delete m;
   }
   mark.clear();
+}
+
+Deck::Deck(Deck &&ref) {
+  cardback = ref.cardback;
+  for (auto c : cards)
+    delete c;
+  cards.clear();
+  cards = ref.cards;
+  ref.cards.clear();
+  for (auto b : backs)
+    delete b;
+  backs.clear();
+  backs = ref.backs;
+  ref.backs.clear();
+  for (auto m : mark)
+    delete m;
+  mark.clear();
+  mark = ref.mark;
+  ref.mark.clear();
+  card_height = ref.card_height;
+};
+
+Deck &Deck::operator=(Deck &&ref) {
+  cardback = ref.cardback;
+  for (auto c : cards)
+    delete c;
+  cards.clear();
+  cards = ref.cards;
+  ref.cards.clear();
+  for (auto b : backs)
+    delete b;
+  backs.clear();
+  backs = ref.backs;
+  ref.backs.clear();
+  for (auto m : mark)
+    delete m;
+  mark.clear();
+  mark = ref.mark;
+  ref.mark.clear();
+  card_height = ref.card_height;
+  return *this;
 }
 
 int Deck::is_deck(int c) { return c / 52; }
@@ -581,4 +623,131 @@ int find_next_closest(const cards &states, int current) {
     }
   }
   return pos;
+}
+
+vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
+                                   std::string("Cyan"),    std::string("Green"),
+                                   std::string("Magenta"), std::string("Red")};
+/**
+ * @brief menu render that sets the text color based on the color found in the
+ * text itself.
+ *
+ * @param c1 [] brackets
+ * @param c2 text within brackets
+ * @param c3 base color give (we set the FG, we use the BG)
+ * @return door::renderFunction
+ */
+door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
+                                     door::ANSIColor c3) {
+  door::renderFunction render = [c1, c2,
+                                 c3](const std::string &txt) -> door::Render {
+    door::Render r(txt);
+
+    bool option = true;
+    door::ColorOutput co;
+    // I need this mutable
+    door::ANSIColor textColor = c3;
+
+    // Color update:
+    {
+      std::string found;
+
+      for (auto &dc : deck_colors) {
+        if (txt.find(dc) != string::npos) {
+          found = dc;
+          break;
+        }
+      }
+
+      if (!found.empty()) {
+        if (found == "All") {
+          // handle this some other way.
+          textColor.setFg(door::COLOR::WHITE);
+        } else {
+          door::ANSIColor c = from_string(found);
+          textColor.setFg(c.getFg());
+        }
+      }
+    }
+    co.pos = 0;
+    co.len = 0;
+    co.c = c1;
+
+    int tpos = 0;
+    for (char const &c : txt) {
+      if (option) {
+        if (c == '[' or c == ']') {
+          if (co.c != c1)
+            if (co.len != 0) {
+              r.outputs.push_back(co);
+              co.reset();
+              co.pos = tpos;
+            }
+          co.c = c1;
+          if (c == ']')
+            option = false;
+        } else {
+          if (co.c != c2)
+            if (co.len != 0) {
+              r.outputs.push_back(co);
+              co.reset();
+              co.pos = tpos;
+            }
+          co.c = c2;
+        }
+      } else {
+        if (co.c != textColor)
+          if (co.len != 0) {
+            r.outputs.push_back(co);
+            co.reset();
+            co.pos = tpos;
+          }
+        co.c = textColor;
+      }
+      co.len++;
+      tpos++;
+    }
+    if (co.len != 0) {
+      r.outputs.push_back(co);
+    }
+    return r;
+  };
+  return render;
+}
+
+// convert a string to an option
+// an option to the string to store
+// This needs to be updated to use deck_colors.
+door::ANSIColor from_string(std::string colorCode) {
+  std::map<std::string, door::ANSIColor> codeMap = {
+      {std::string("BLUE"), door::ANSIColor(door::COLOR::BLUE)},
+      {std::string("RED"), door::ANSIColor(door::COLOR::RED)},
+      {std::string("CYAN"), door::ANSIColor(door::COLOR::CYAN)},
+      {std::string("GREEN"), door::ANSIColor(door::COLOR::GREEN)},
+      {std::string("MAGENTA"), door::ANSIColor(door::COLOR::MAGENTA)}};
+
+  std::string code = colorCode;
+  string_toupper(code);
+
+  auto iter = codeMap.find(code);
+  if (iter != codeMap.end()) {
+    return iter->second;
+  }
+
+  // And if it doesn't match, and isn't ALL ... ?
+  // if (code.compare("ALL") == 0) {
+  std::random_device dev;
+  std::mt19937_64 rng(dev());
+
+  std::uniform_int_distribution<size_t> idDist(0, codeMap.size() - 1);
+  iter = codeMap.begin();
+  std::advance(iter, idDist(rng));
+
+  return iter->second;
+  // }
+}
+
+std::string from_color_option(int opt) { return deck_colors[opt]; }
+void string_toupper(std::string &str) {
+  std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 }

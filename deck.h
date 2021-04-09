@@ -1,3 +1,6 @@
+#ifndef DECK_H
+#define DECK_H
+
 #include "door.h"
 
 #include <random>
@@ -99,6 +102,9 @@ public:
   enum SUIT { HEART, DIAMOND, CLUBS, SPADE };
 
   Deck(int size = 3);
+  // Deck(const Deck &) = default;
+  Deck(Deck &&);
+  Deck &operator=(Deck &&);
   Deck(door::ANSIColor backcolor, int size = 3);
   ~Deck();
 
@@ -230,3 +236,12 @@ int find_next(bool left, const cards &states, int current);
  * @return int
  */
 int find_next_closest(const cards &states, int current);
+
+extern vector<std::string> deck_colors;
+door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
+                                     door::ANSIColor c3);
+door::ANSIColor from_string(std::string colorCode);
+std::string from_color_option(int opt);
+void string_toupper(std::string &str);
+
+#endif
