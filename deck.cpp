@@ -4,32 +4,16 @@
 #include <map>
 #include <sstream>
 
-Deck::Deck(int size) {
-  cardback = door::ANSIColor(door::COLOR::RED);
-  card_height = size;
-  init();
-}
-
-Deck::Deck(door::ANSIColor backcolor, int size) : cardback{backcolor} {
-  card_height = size;
-  init();
-}
-
-void Deck::init(void) {
-  if (card_height != 3) {
-    if (card_height != 5) {
-      card_height = 3;
-    }
-  }
+Deck::Deck(door::ANSIColor backcolor) : card_back_color{backcolor} {
   for (int i = 0; i < 52; ++i) {
-    cards.push_back(card_of(i));
+    cards.push_back(cardOf(i));
   }
   // 0 = BLANK, 1-4 levels
   for (int i = 0; i < 5; ++i) {
-    backs.push_back(back_of(i));
+    backs.push_back(backOf(i));
   }
-  mark.push_back(mark_of(0));
-  mark.push_back(mark_of(1));
+  mark.push_back(markOf(0));
+  mark.push_back(markOf(1));
 }
 
 Deck::~Deck() {
@@ -48,7 +32,7 @@ Deck::~Deck() {
 }
 
 Deck::Deck(Deck &&ref) {
-  cardback = ref.cardback;
+  card_back_color = ref.card_back_color;
   for (auto c : cards)
     delete c;
   cards.clear();
@@ -64,11 +48,11 @@ Deck::Deck(Deck &&ref) {
   mark.clear();
   mark = ref.mark;
   ref.mark.clear();
-  card_height = ref.card_height;
+  // card_height = ref.card_height;
 };
 
 Deck &Deck::operator=(Deck &&ref) {
-  cardback = ref.cardback;
+  card_back_color = ref.card_back_color;
   for (auto c : cards)
     delete c;
   cards.clear();
@@ -84,20 +68,20 @@ Deck &Deck::operator=(Deck &&ref) {
   mark.clear();
   mark = ref.mark;
   ref.mark.clear();
-  card_height = ref.card_height;
+  // card_height = ref.card_height;
   return *this;
 }
 
-int Deck::is_deck(int c) { return c / 52; }
-int Deck::is_suit(int c) { return (c % 52) / 13; }
-int Deck::is_rank(int c) { return (c % 52) % 13; }
+int Deck::getDeck(int c) { return c / 52; }
+int Deck::getSuit(int c) { return (c % 52) / 13; }
+int Deck::getRank(int c) { return (c % 52) % 13; }
 
-char Deck::rank_symbol(int c) {
+char Deck::rankSymbol(int c) {
   const char symbols[] = "A23456789TJQK";
   return symbols[c];
 }
 
-std::string Deck::suit_symbol(int c) {
+std::string Deck::suitSymbol(int c) {
   // unicode
   if (door::unicode) {
     switch (c) {
@@ -139,9 +123,9 @@ std::string Deck::suit_symbol(int c) {
   return std::string("!", 1);
 }
 
-door::Panel *Deck::card_of(int c) {
-  int suit = is_suit(c);
-  int rank = is_rank(c);
+door::Panel *Deck::cardOf(int c) {
+  int suit = getSuit(c);
+  int rank = getRank(c);
   bool is_red = (suit < 2);
   door::ANSIColor color;
 
@@ -153,8 +137,8 @@ door::Panel *Deck::card_of(int c) {
   door::Panel *p = new door::Panel(0, 0, 5);
   // setColor sets border_color.  NOT WHAT I WANT.
   // p->setColor(color);
-  char r = rank_symbol(rank);
-  std::string s = suit_symbol(suit);
+  char r = rankSymbol(rank);
+  std::string s = suitSymbol(suit);
 
   // build lines
   std::ostringstream oss;
@@ -185,7 +169,7 @@ door::Panel *Deck::card_of(int c) {
   return p;
 }
 
-std::string Deck::back_char(int level) {
+std::string Deck::backSymbol(int level) {
   std::string c;
   if (level == 0) {
     c = ' ';
@@ -225,23 +209,23 @@ std::string Deck::back_char(int level) {
   return c;
 }
 
-door::Panel *Deck::back_of(int level) {
+door::Panel *Deck::backOf(int level) {
   // using: \xb0, 0xb1, 0xb2, 0xdb
   // OR:    \u2591, \u2592, \u2593, \u2588
 
   // door::ANSIColor color(door::COLOR::RED, door::COLOR::BLACK);
   door::Panel *p = new door::Panel(0, 0, 5);
-  std::string c = back_char(level);
+  std::string c = backSymbol(level);
   std::string l = c + c + c + c + c;
   for (int x = 0; x < card_height; ++x) {
-    p->addLine(std::make_unique<door::Line>(l, 5, cardback));
+    p->addLine(std::make_unique<door::Line>(l, 5, card_back_color));
   };
-  // p->addLine(std::make_unique<door::Line>(l, 5, cardback));
-  // p->addLine(std::make_unique<door::Line>(l, 5, cardback));
+  // p->addLine(std::make_unique<door::Line>(l, 5, card_back_color));
+  // p->addLine(std::make_unique<door::Line>(l, 5, card_back_color));
   return p;
 }
 
-door::Panel *Deck::mark_of(int c) {
+door::Panel *Deck::markOf(int c) {
   door::Panel *p = new door::Panel(1);
   door::ANSIColor color = door::ANSIColor(
       door::COLOR::BLUE, door::COLOR::WHITE); // , door::ATTR::BOLD);
@@ -265,10 +249,10 @@ void Deck::part(int x, int y, door::Door &d, int level, bool left) {
   if (!left) {
     x += 2;
   }
-  std::string c = back_char(level);
+  std::string c = backSymbol(level);
   std::string l = c + c + c;
   door::Goto g(x, y);
-  d << g << cardback << l;
+  d << g << card_back_color << l;
 }
 
 door::Panel *Deck::card(int c) { return cards[c]; }
@@ -325,10 +309,10 @@ std::vector<int> Deck::unblocks(int card) {
  * @return true
  * @return false
  */
-bool Deck::can_play(int card1, int card2) {
+bool Deck::canPlay(int card1, int card2) {
   int rank1, rank2;
-  rank1 = is_rank(card1);
-  rank2 = is_rank(card2);
+  rank1 = getRank(card1);
+  rank2 = getRank(card2);
 
   // this works %13 handles wrap-around for us.
   if ((rank1 + 1) % 13 == rank2)
@@ -354,7 +338,7 @@ bool Deck::can_play(int card1, int card2) {
 door::Panel *Deck::marker(int c) { return mark[c]; }
 
 /**
- * @brief remove_card
+ * @brief removeCard
  *
  * This removes a card at a given position (c).
  * It needs to know if there are cards underneath
@@ -367,15 +351,15 @@ door::Panel *Deck::marker(int c) { return mark[c]; }
  * @param left
  * @param right
  */
-void Deck::remove_card(door::Door &door, int c, int off_x, int off_y, bool left,
-                       bool right) {
+void Deck::removeCard(door::Door &door, int c, int off_x, int off_y, bool left,
+                      bool right) {
   int cx, cy, level;
   cardgo(c, cx, cy, level);
   if (level > 1)
     --level;
-  std::string cstr = back_char(level);
+  std::string cstr = backSymbol(level);
   door::Goto g(cx + off_x, cy + off_y);
-  door << g << cardback;
+  door << g << card_back_color;
   if (left)
     door << cstr;
   else
@@ -590,12 +574,12 @@ void cardgo(int pos, int &x, int &y, int &level) {
  *
  * example of seeding the deck for a given date 2/27/2021 game 1
  * std::seed_seq s1{2021, 2, 27, 1};
- * vector<int> deck1 = card_shuffle(s1, 1);
+ * vector<int> deck1 = shuffleCards(s1, 1);
  * @param seed
  * @param decks
  * @return vector<int>
  */
-cards card_shuffle(std::seed_seq &seed, int decks) {
+cards shuffleCards(std::seed_seq &seed, int decks) {
   std::mt19937 gen;
 
   // build deck of cards
@@ -620,7 +604,7 @@ cards card_shuffle(std::seed_seq &seed, int decks) {
  * @param decks
  * @return cards
  */
-cards card_states(int decks) {
+cards makeCardStates(int decks) {
   // auto states = std::unique_ptr<std::vector<int>>(); // (decks * 52, 0)>;
   std::vector<int> states;
   states.assign(decks * 52, 0);
@@ -642,7 +626,7 @@ cards card_states(int decks) {
  * @param current
  * @return int
  */
-int find_next(bool left, const cards &states, int current) {
+int findNextActiveCard(bool left, const cards &states, int current) {
   int cx, cy, level;
   int current_x;
   cardgo(current, cx, cy, level);
@@ -713,7 +697,7 @@ int find_next(bool left, const cards &states, int current) {
  * @param current
  * @return int
  */
-int find_next_closest(const cards &states, int current) {
+int findClosestActiveCard(const cards &states, int current) {
   int cx, cy, level;
   int current_x;
   cardgo(current, cx, cy, level);
@@ -781,7 +765,7 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
           // handle this some other way.
           textColor.setFg(door::COLOR::WHITE);
         } else {
-          door::ANSIColor c = from_string(found);
+          door::ANSIColor c = stringToANSIColor(found);
           textColor.setFg(c.getFg());
         }
       }
@@ -835,7 +819,7 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
 // convert a string to an option
 // an option to the string to store
 // This needs to be updated to use deck_colors.
-door::ANSIColor from_string(std::string colorCode) {
+door::ANSIColor stringToANSIColor(std::string colorCode) {
   std::map<std::string, door::ANSIColor> codeMap = {
       {std::string("BLUE"), door::ANSIColor(door::COLOR::BLUE)},
       {std::string("RED"), door::ANSIColor(door::COLOR::RED)},
@@ -864,7 +848,7 @@ door::ANSIColor from_string(std::string colorCode) {
   // }
 }
 
-std::string from_color_option(int opt) { return deck_colors[opt]; }
+std::string stringFromColorOptions(int opt) { return deck_colors[opt]; }
 void string_toupper(std::string &str) {
   std::transform(str.begin(), str.end(), str.begin(), ::toupper);
 }

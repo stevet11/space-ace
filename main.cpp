@@ -43,7 +43,7 @@ bool file_exists(const char *name) {
   return f.good();
 }
 
-door::ANSIColor from_string(std::string colorCode);
+door::ANSIColor stringToANSIColor(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
 
@@ -464,7 +464,7 @@ int configure(door::Door &door, DBData &db) {
 
         if (newOpt >= 0) {
           newOpt--;
-          newColor = from_color_option(newOpt);
+          newColor = stringFromColorOptions(newOpt);
           if (newOpt != currentOpt) {
             door.log() << deckcolor << " was " << currentDefault << ", "
                        << currentOpt << ". Now " << newColor << ", " << newOpt
@@ -863,7 +863,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (r < 0) {
-  TIMEOUT:
+    // TIMEOUT:
     if (r == -1) {
       door.log() << "TIMEOUT" << std::endl;
 
@@ -969,8 +969,8 @@ int main(int argc, char *argv[]) {
   // games the same/fair for everyone.
 
   std::seed_seq s1{2021, 2, 27, 1};
-  cards deck1 = card_shuffle(s1, 1);
-  cards state = card_states();
+  cards deck1 = shuffleCards(s1, 1);
+  cards state = makeCardStates();
 
   // I tried setting the cursor before the delay and before displaying the
   // card. It is very hard to see / just about useless.  Not worth the

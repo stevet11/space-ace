@@ -40,7 +40,7 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
                  << std::put_time(std::localtime(&time_play_day), "%F %R")
                  << std::endl;
   };
-  standard_date(time_play_day);
+  normalizeDate(time_play_day);
   play_day = std::chrono::system_clock::from_time_t(time_play_day);
   if (get_logger) {
     get_logger() << "after: "
@@ -85,7 +85,7 @@ int PlayCards::play_cards(void) {
   init_values();
   std::string currentDefault = db.getSetting("DeckColor", "ALL");
   get_logger() << "DeckColor shows as " << currentDefault << std::endl;
-  deck_color = from_string(currentDefault);
+  deck_color = stringToANSIColor(currentDefault);
 
   dp = Deck(deck_color);
 
@@ -124,8 +124,8 @@ next_hand:
 
     std::seed_seq seq{local_tm.tm_year + 1900, local_tm.tm_mon + 1,
                       local_tm.tm_mday, hand};
-    deck = card_shuffle(seq, 1);
-    state = card_states();
+    deck = shuffleCards(seq, 1);
+    state = makeCardStates();
   }
 
   /*
@@ -217,18 +217,18 @@ next_hand:
       case '5':
         // can we play this card?
         /*
-        get_logger() << "can_play( " << select_card << ":"
+        get_logger() << "canPlay( " << select_card << ":"
                      << deck1.at(select_card) << "/"
-                     << d.is_rank(deck1.at(select_card)) << " , "
+                     << d.getRank(deck1.at(select_card)) << " , "
                      << play_card << "/" <<
-        d.is_rank(deck1.at(play_card))
+        d.getRank(deck1.at(play_card))
                      << ") = "
-                     << d.can_play(deck1.at(select_card),
+                     << d.canPlay(deck1.at(select_card),
                                    deck1.at(play_card))
                      << std::endl;
                      */
 
-        if (dp.can_play(deck.at(select_card), deck.at(play_card)) or
+        if (dp.canPlay(deck.at(select_card), deck.at(play_card)) or
             config[CHEATER]) {
           // if (true) {
           // yes we can.
@@ -270,7 +270,7 @@ next_hand:
                 left = true;
             }
 
-            dp.remove_card(door, select_card, off_x, off_y, left, right);
+            dp.removeCard(door, select_card, off_x, off_y, left, right);
 
             /*   // old way of doing this that leaves holes.
             cardgo(select_card, cx, cy, level);
@@ -336,7 +336,7 @@ next_hand:
               select_card = new_card_shown;
             } else {
               // select_card++;
-              int new_select = find_next_closest(state, select_card);
+              int new_select = findClosestActiveCard(state, select_card);
 
               if (new_select != -1) {
                 select_card = new_select;
@@ -354,9 +354,9 @@ next_hand:
                 // if (!config[CHEATER]) {
                 time_t right_now = std::chrono::system_clock::to_time_t(
                     std::chrono::system_clock::now());
-                db.save_score(right_now,
-                              std::chrono::system_clock::to_time_t(play_day),
-                              hand, score);
+                db.saveScore(right_now,
+                             std::chrono::system_clock::to_time_t(play_day),
+                             hand, score);
                 //}
                 press_a_key(door);
 
@@ -380,7 +380,7 @@ next_hand:
         break;
       case XKEY_LEFT_ARROW:
       case '4': {
-        int new_select = find_next(true, state, select_card);
+        int new_select = findNextActiveCard(true, state, select_card);
         /*
         int new_active = active_card - 1;
         while (new_active >= 0) {
@@ -404,7 +404,7 @@ next_hand:
       } break;
       case XKEY_RIGHT_ARROW:
       case '6': {
-        int new_select = find_next(false, state, select_card);
+        int new_select = findNextActiveCard(false, state, select_card);
         /*
         int new_active = active_card + 1;
         while (new_active < 28) {
