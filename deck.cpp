@@ -243,18 +243,6 @@ door::Panel *Deck::markOf(int c) {
   return p;
 }
 
-void Deck::part(int x, int y, door::Door &d, int level, bool left) {
-  // Render part of the back of a card.
-  y += 2;
-  if (!left) {
-    x += 2;
-  }
-  std::string c = backSymbol(level);
-  std::string l = c + c + c;
-  door::Goto g(x, y);
-  d << g << card_back_color << l;
-}
-
 door::Panel *Deck::card(int c) { return cards[c]; }
 
 /**
@@ -354,7 +342,7 @@ door::Panel *Deck::marker(int c) { return mark[c]; }
 void Deck::removeCard(door::Door &door, int c, int off_x, int off_y, bool left,
                       bool right) {
   int cx, cy, level;
-  cardgo(c, cx, cy, level);
+  cardPosLevel(c, cx, cy, level);
   if (level > 1)
     --level;
   std::string cstr = backSymbol(level);
@@ -404,6 +392,7 @@ XXXXX   XXXXX   XXXXX
 width = 5 * 10 + (2 * 9) = 50+18 = 68   !  I could do that!
 */
 
+#ifdef NO
 /**
  * @brief Where does this card go in relation to everything else?
  *
@@ -494,6 +483,126 @@ int levels[4] = {3, 6, 9, 10};
     level = -1;
   }
 }
+#endif
+
+void cardPos(int pos, int &x, int &y) {
+  const int space = 3;
+  const int height = 3;
+
+  // special cases here
+  if (pos == 28) {
+    cardPos(23, x, y);
+    y += height + 1;
+    return;
+  } else {
+    if (pos == 29) {
+      cardPos(22, x, y);
+      y += height + 1;
+      return;
+    }
+  }
+
+  const int CARD_WIDTH = 5;
+  int HALF_WIDTH = 3;
+  HALF_WIDTH += space / 2;
+
+  int between = CARD_WIDTH + space;
+  int level; // I still need level in my calculations
+
+  if (pos < 3) {
+    // top
+    level = 1;
+    y = (level - 1) * (height - 1) + 1;
+    x = pos * (between * 3) + between + HALF_WIDTH + space; // 10
+    return;
+  } else {
+    pos -= 3;
+  }
+  if (pos < 6) {
+    level = 2;
+    y = (level - 1) * (height - 1) + 1;
+    int group = (pos) / 2;
+    x = pos * between + (group * between) + CARD_WIDTH + space * 2;
+    return;
+  } else {
+    pos -= 6;
+  }
+  if (pos < 9) {
+    level = 3;
+    y = (level - 1) * (height - 1) + 1;
+    x = pos * between + HALF_WIDTH + space;
+    return;
+  } else {
+    pos -= 9;
+  }
+  if (pos < 10) {
+    level = 4;
+    y = (level - 1) * (height - 1) + 1;
+    x = (pos)*between + space;
+    return;
+  } else {
+    // something is wrong.
+    y = -1;
+    x = -1;
+    level = -1;
+  }
+}
+
+void cardLevel(int pos, int &level) {
+  /*
+  const int space = 3;
+  const int height = 3;
+  */
+
+  // special cases here
+  if (pos == 28) {
+    cardLevel(23, level);
+    --level;
+    return;
+  } else {
+    if (pos == 29) {
+      cardLevel(22, level);
+      --level;
+      return;
+    }
+  }
+
+  /*
+  const int CARD_WIDTH = 5;
+  int HALF_WIDTH = 3;
+  HALF_WIDTH += space / 2;
+  int between = CARD_WIDTH + space;
+  */
+
+  if (pos < 3) {
+    // top
+    level = 1;
+    return;
+  } else {
+    pos -= 3;
+  }
+
+  if (pos < 6) {
+    level = 2;
+    return;
+  } else {
+    pos -= 6;
+  }
+
+  if (pos < 9) {
+    level = 3;
+    return;
+  } else {
+    pos -= 9;
+  }
+  if (pos < 10) {
+    level = 4;
+    return;
+  } else {
+    // something is wrong.
+    level = -1;
+  }
+}
 
 /**
  * @brief Given card pos, calculate x, y, and level values.
@@ -505,20 +614,20 @@ int levels[4] = {3, 6, 9, 10};
  * @param y
  * @param level
  */
-void cardgo(int pos, int &x, int &y, int &level) {
+void cardPosLevel(int pos, int &x, int &y, int &level) {
   const int space = 3;
-  const int h = 3;
+  const int height = 3;
 
   // special cases here
   if (pos == 28) {
-    cardgo(23, x, y, level);
-    y += h + 1;
+    cardPosLevel(23, x, y, level);
+    y += height + 1;
     --level;
     return;
   } else {
     if (pos == 29) {
-      cardgo(22, x, y, level);
-      y += h + 1;
+      cardPosLevel(22, x, y, level);
+      y += height + 1;
       --level;
       return;
     }
@@ -533,7 +642,7 @@ void cardgo(int pos, int &x, int &y, int &level) {
   if (pos < 3) {
     // top
     level = 1;
-    y = (level - 1) * (h - 1) + 1;
+    y = (level - 1) * (height - 1) + 1;
     x = pos * (between * 3) + between + HALF_WIDTH + space; // 10
     return;
   } else {
@@ -541,7 +650,7 @@ void cardgo(int pos, int &x, int &y, int &level) {
   }
   if (pos < 6) {
     level = 2;
-    y = (level - 1) * (h - 1) + 1;
+    y = (level - 1) * (height - 1) + 1;
     int group = (pos) / 2;
     x = pos * between + (group * between) + CARD_WIDTH + space * 2;
     return;
@@ -550,7 +659,7 @@ void cardgo(int pos, int &x, int &y, int &level) {
   }
   if (pos < 9) {
     level = 3;
-    y = (level - 1) * (h - 1) + 1;
+    y = (level - 1) * (height - 1) + 1;
     x = pos * between + HALF_WIDTH + space;
     return;
   } else {
@@ -558,7 +667,7 @@ void cardgo(int pos, int &x, int &y, int &level) {
   }
   if (pos < 10) {
     level = 4;
-    y = (level - 1) * (h - 1) + 1;
+    y = (level - 1) * (height - 1) + 1;
     x = (pos)*between + space;
     return;
   } else {
@@ -627,9 +736,9 @@ cards makeCardStates(int decks) {
  * @return int
  */
 int findNextActiveCard(bool left, const cards &states, int current) {
-  int cx, cy, level;
+  int cx, cy;
   int current_x;
-  cardgo(current, cx, cy, level);
+  cardPos(current, cx, cy);
   current_x = cx;
   int x;
   int pos = -1;
@@ -650,7 +759,7 @@ int findNextActiveCard(bool left, const cards &states, int current) {
       // possible location
       if (x == current)
         continue;
-      cardgo(x, cx, cy, level);
+      cardPos(x, cx, cy);
       // find max and min while we're iterating here
       if (cx < min_x) {
         min_pos = x;
@@ -698,9 +807,9 @@ int findNextActiveCard(bool left, const cards &states, int current) {
  * @return int
  */
 int findClosestActiveCard(const cards &states, int current) {
-  int cx, cy, level;
+  int cx, cy;
   int current_x;
-  cardgo(current, cx, cy, level);
+  cardPos(current, cx, cy);
   current_x = cx;
   int x;
   int pos = -1;
@@ -711,7 +820,7 @@ int findClosestActiveCard(const cards &states, int current) {
       // possible location
       if (x == current)
         continue;
-      cardgo(x, cx, cy, level);
+      cardPos(x, cx, cy);
       if (pos == -1) {
         pos = x;
         pos_x = cx;

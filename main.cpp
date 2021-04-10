@@ -958,7 +958,7 @@ int main(int argc, char *argv[]) {
   int game_width;
   {
     int cx, cy, level;
-    cardgo(27, space, height, cx, cy, level);
+    cardPosLevel(27, space, height, cx, cy, level);
     game_width = cx + 5; // card width
   }
   int off_x = (mx - game_width) / 2;
@@ -979,7 +979,7 @@ int main(int argc, char *argv[]) {
   for (int x = 0; x < 28; x++) {
     int cx, cy, level;
 
-    cardgo(x, space, height, cx, cy, level);
+    cardPosLevel(x, space, height, cx, cy, level);
     // This is hardly visible.
     // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(75));
@@ -999,7 +999,7 @@ int main(int argc, char *argv[]) {
     // usleep(1000 * 20);
 
     state.at(x) = 1;
-    cardgo(x, space, height, cx, cy, level);
+    cardPosLevel(x, space, height, cx, cy, level);
     // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 

@@ -93,8 +93,8 @@ int PlayCards::play_cards(void) {
   int game_width;
   int game_height = 20;
   {
-    int cx, cy, level;
-    cardgo(27, cx, cy, level);
+    int cx, cy;
+    cardPos(27, cx, cy);
     game_width = cx + 5;
   }
 
@@ -137,12 +137,12 @@ next_hand:
 
   {
     int off_yp = off_y + 11;
-    int cxp, cyp, levelp;
+    int cxp, cyp;
     int left_panel_x, right_panel_x;
     // find position of card, to position the panels
-    cardgo(18, cxp, cyp, levelp);
+    cardPos(18, cxp, cyp);
     left_panel_x = cxp;
-    cardgo(15, cxp, cyp, levelp);
+    cardPos(15, cxp, cyp);
     right_panel_x = cxp;
     score_panel->set(left_panel_x + off_x, off_yp);
     streak_panel->set(right_panel_x + off_x, off_yp);
@@ -194,13 +194,13 @@ next_hand:
           int cx, cy, level;
 
           if (play_card == 51) {
-            cardgo(29, cx, cy, level);
+            cardPosLevel(29, cx, cy, level);
             level = 0; // out of cards
             c = dp.back(level);
             c->set(cx + off_x, cy + off_y);
             door << *c;
           }
-          cardgo(28, cx, cy, level);
+          cardPos(28, cx, cy);
           c = dp.card(deck.at(play_card));
           c->set(cx + off_x, cy + off_y);
           door << *c;
@@ -257,7 +257,7 @@ next_hand:
             deck.at(select_card) = deck.at(play_card);
             deck.at(play_card) = temp;
             // select_card is -- invalidated here!  find "new" card.
-            int cx, cy, level;
+            int cx, cy;
 
             // erase/clear select_card
             std::vector<int> check = dp.unblocks(select_card);
@@ -273,14 +273,14 @@ next_hand:
             dp.removeCard(door, select_card, off_x, off_y, left, right);
 
             /*   // old way of doing this that leaves holes.
-            cardgo(select_card, cx, cy, level);
+            cardPosLevel(select_card, cx, cy, level);
             c = d.back(0);
             c->set(cx + off_x, cy + off_y);
             door << *c;
             */
 
             // redraw play card #28. (Which is the "old" select_card)
-            cardgo(28, cx, cy, level);
+            cardPos(28, cx, cy);
             c = dp.card(deck.at(play_card));
             c->set(cx + off_x, cy + off_y);
             door << *c;
@@ -310,7 +310,7 @@ next_hand:
                   get_logger() << "showing: " << to_check << std::endl;
                   */
                   state.at(to_check) = 1;
-                  cardgo(to_check, cx, cy, level);
+                  cardPos(to_check, cx, cy);
                   c = dp.card(deck.at(to_check));
                   c->set(cx + off_x, cy + off_y);
                   door << *c;
@@ -321,8 +321,8 @@ next_hand:
               // top card cleared
               // get_logger() << "top card cleared?" << std::endl;
               // display something at select_card position
-              int cx, cy, level;
-              cardgo(select_card, cx, cy, level);
+              int cx, cy;
+              cardPos(select_card, cx, cy);
               door << door::Goto(cx + off_x, cy + off_y);
               bonus();
 
@@ -371,7 +371,7 @@ next_hand:
               }
             }
             // update the select_card marker!
-            cardgo(select_card, cx, cy, level);
+            cardPos(select_card, cx, cy);
             c = dp.marker(1);
             c->set(cx + off_x + 2, cy + off_y + 2);
             door << *c;
@@ -390,13 +390,13 @@ next_hand:
         }*/
         if (new_select >= 0) {
 
-          int cx, cy, level;
-          cardgo(select_card, cx, cy, level);
+          int cx, cy;
+          cardPos(select_card, cx, cy);
           c = dp.marker(0);
           c->set(cx + off_x + 2, cy + off_y + 2);
           door << *c;
           select_card = new_select;
-          cardgo(select_card, cx, cy, level);
+          cardPos(select_card, cx, cy);
           c = dp.marker(1);
           c->set(cx + off_x + 2, cy + off_y + 2);
           door << *c;
@@ -414,13 +414,13 @@ next_hand:
         }
         */
         if (new_select >= 0) { //(new_active < 28) {
-          int cx, cy, level;
-          cardgo(select_card, cx, cy, level);
+          int cx, cy;
+          cardPos(select_card, cx, cy);
           c = dp.marker(0);
           c->set(cx + off_x + 2, cy + off_y + 2);
           door << *c;
           select_card = new_select;
-          cardgo(select_card, cx, cy, level);
+          cardPos(select_card, cx, cy);
           c = dp.marker(1);
           c->set(cx + off_x + 2, cy + off_y + 2);
           door << *c;
@@ -452,7 +452,7 @@ void PlayCards::redraw(bool dealing) {
     // step 1:
     // draw the deck "source"
     int cx, cy, level;
-    cardgo(29, cx, cy, level);
+    cardPosLevel(29, cx, cy, level);
 
     if (play_card == 51)
       level = 0; // out of cards!
@@ -476,7 +476,7 @@ void PlayCards::redraw(bool dealing) {
   for (int x = 0; x < (dealing ? 28 : 29); x++) {
     int cx, cy, level;
 
-    cardgo(x, cx, cy, level);
+    cardPosLevel(x, cx, cy, level);
     // This is hardly visible.
     // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
     if (dealing)
@@ -497,7 +497,7 @@ void PlayCards::redraw(bool dealing) {
         door << *c;
         break;
       case 1:
-        // cardgo(x, space, height, cx, cy, level);
+        // cardPosLevel(x, space, height, cx, cy, level);
         if (x == 28)
           c = dp.card(deck.at(play_card));
         else
@@ -519,10 +519,10 @@ void PlayCards::redraw(bool dealing) {
 
   if (dealing)
     for (int x = 18; x < 29; x++) {
-      int cx, cy, level;
+      int cx, cy;
 
       state.at(x) = 1;
-      cardgo(x, cx, cy, level);
+      cardPos(x, cx, cy);
       // door << door::Goto(cx + off_x - 1, cy + off_y + 1);
       std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -532,8 +532,8 @@ void PlayCards::redraw(bool dealing) {
     }
 
   {
-    int cx, cy, level;
-    cardgo(select_card, cx, cy, level);
+    int cx, cy;
+    cardPos(select_card, cx, cy);
     c = dp.marker(1);
     c->set(cx + off_x + 2, cy + off_y + 2);
     door << *c;

@@ -89,10 +89,11 @@ class Deck {
 private:
   // We assume for this game that there's only one deck back color.
   door::ANSIColor card_back_color;
-  // shared_ptr<door::Panel> for the win?
+
   vector<door::Panel *> cards;
   vector<door::Panel *> backs;
   vector<door::Panel *> mark;
+
   door::Panel *cardOf(int c);
   std::string backSymbol(int level);
   door::Panel *backOf(int level);
@@ -103,6 +104,7 @@ private:
 
 public:
   enum SUIT { HEART, DIAMOND, CLUBS, SPADE };
+  const static std::array<std::pair<int, int>, 18> blocks;
 
   Deck(door::ANSIColor backcolor = door::ANSIColor(door::COLOR::RED));
   Deck(Deck &&);
@@ -113,21 +115,20 @@ public:
   int getRank(int c);
   int getSuit(int c);
   int getDeck(int c);
-
   bool canPlay(int card1, int card2);
   door::Panel *card(int c);
   door::Panel *back(int level);
   door::Panel *marker(int c);
-
-  void part(int x, int y, door::Door &d, int level, bool left);
   std::vector<int> unblocks(int card);
-  const static std::array<std::pair<int, int>, 18> blocks;
 
   void removeCard(door::Door &door, int c, int off_x, int off_y, bool left,
                   bool right);
 };
 
-void cardgo(int pos, int &x, int &y, int &level);
+void cardPos(int pos, int &x, int &y);
+void cardLevel(int pos, int &level);
+void cardPosLevel(int pos, int &x, int &y, int &level);
+
 cards shuffleCards(std::seed_seq &seed, int decks = 1);
 cards makeCardStates(int decks = 1);
 int findNextActiveCard(bool left, const cards &states, int current);
