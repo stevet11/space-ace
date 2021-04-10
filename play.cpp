@@ -52,6 +52,8 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
   streak_panel = make_streak_panel();
   left_panel = make_left_panel();
   cmd_panel = make_command_panel();
+  next_quit_panel = make_next_panel();
+
   /*
     int mx = door.width;
     int my = door.height;
@@ -137,16 +139,21 @@ next_hand:
 
   {
     int off_yp = off_y + 11;
-    int cxp, cyp;
+    int cx, cy;
     int left_panel_x, right_panel_x;
     // find position of card, to position the panels
-    cardPos(18, cxp, cyp);
-    left_panel_x = cxp;
-    cardPos(15, cxp, cyp);
-    right_panel_x = cxp;
+    cardPos(18, cx, cy);
+    left_panel_x = cx;
+    cardPos(15, cx, cy);
+    right_panel_x = cx;
     score_panel->set(left_panel_x + off_x, off_yp);
     streak_panel->set(right_panel_x + off_x, off_yp);
     cmd_panel->set(left_panel_x + off_x, off_yp + 5);
+
+    // next panel position
+    cardPos(10, cx, cy);
+    int next_off_x = (mx - next_quit_panel->getWidth()) / 2;
+    next_quit_panel->set(next_off_x + off_x, cy + off_y);
   }
 
   bool dealing = true;
@@ -211,7 +218,45 @@ next_hand:
         break;
       case 'Q':
         // possibly prompt here for [N]ext hand or [Q]uit ?
-        in_game = false;
+        next_quit_panel->update();
+        door << *next_quit_panel;
+
+        if (hand < total_hands) {
+          r = door.get_one_of("CQN");
+        } else {
+          r = door.get_one_of("CQ");
+        }
+
+        if (r == 0) {
+          // continue
+          redraw(false);
+          break;
+        }
+        if (r == 1) {
+          // Ok, we are calling it quits.
+          // save score if > 0
+          if (score >= 50) {
+            time_t right_now = std::chrono::system_clock::to_time_t(
+                std::chrono::system_clock::now());
+            db.saveScore(right_now,
+                         std::chrono::system_clock::to_time_t(play_day), hand,
+                         score);
+          }
+          in_game = false;
+          r = 'Q';
+        }
+        if (r == 2) {
+          // no.  If you want to play the next hand, we have to save this.
+          get_logger() << "SCORE: " << score << std::endl;
+          time_t right_now = std::chrono::system_clock::to_time_t(
+              std::chrono::system_clock::now());
+          db.saveScore(right_now,
+                       std::chrono::system_clock::to_time_t(play_day), hand,
+                       score);
+          hand++;
+          goto next_hand;
+        }
+        // in_game = false;
         break;
       case ' ':
       case '5':
@@ -342,14 +387,18 @@ next_hand:
                 select_card = new_select;
               } else {
                 get_logger() << "Winner!" << std::endl;
+                select_card = -1; // winner marker?
 
                 // bonus for cards left
                 int bonus = 15 * (51 - play_card);
 
                 score += 15 * (51 - play_card);
                 score_panel->update(door);
-                door << " BONUS: " << bonus << door::nl;
-                get_logger() << "SCORE: " << score << std::endl;
+
+                // maybe display this somewhere?
+                // door << " BONUS: " << bonus << door::nl;
+                get_logger()
+                    << "SCORE: " << score << ", " << bonus << std::endl;
 
                 // if (!config[CHEATER]) {
                 time_t right_now = std::chrono::system_clock::to_time_t(
@@ -358,6 +407,24 @@ next_hand:
                              std::chrono::system_clock::to_time_t(play_day),
                              hand, score);
                 //}
+                next_quit_panel->update();
+                door << *next_quit_panel;
+
+                if (hand < total_hands) {
+                  r = door.get_one_of("QN");
+                } else {
+                  r = door.get_one_of("Q");
+                }
+
+                if (r == 1) {
+                  hand++;
+                  goto next_hand;
+                }
+
+                if (r == 0) {
+                  r = 'Q';
+                }
+                /*
                 press_a_key(door);
 
                 if (hand < total_hands) {
@@ -367,6 +434,7 @@ next_hand:
                   goto next_hand;
                 }
                 r = 'Q';
+                */
                 in_game = false;
               }
             }
@@ -434,7 +502,9 @@ next_hand:
   }
 
   if (r == 'Q') {
-    // continue with hand, or quit?
+    // continue, play next hand (if applicable), or quit?
+    // if score < 50, don't bother saving.
+
     // continue -- eat r & redraw.
     // quit, save score and exit  (unless score is zero).
   }
@@ -830,6 +900,50 @@ std::unique_ptr<door::Panel> PlayCards::make_command_panel(void) {
   door::Line cmd(commands, W);
   cmd.setRender(cmdRender);
   p->addLine(std::make_unique<door::Line>(cmd));
+  return p;
+}
+
+std::unique_ptr<door::Panel> PlayCards::make_next_panel(void) {
+  const int W = 50;
+  std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
+  door::ANSIColor panelColor(door::COLOR::YELLOW, door::COLOR::GREEN,
+                             door::ATTR::BOLD);
+  p->setStyle(door::BorderStyle::DOUBLE);
+  p->setColor(panelColor);
+
+  door::updateFunction nextUpdate = [this](void) -> std::string {
+    std::string text;
+    if (select_card == -1) {
+      // winner
+      if (hand < total_hands) {
+        text = " [N]ext Hand - [Q]uit";
+      } else
+        text = " All hands played - [Q]uit";
+    } else if (hand < total_hands) {
+      text = " [C]ontinue this hand - [N]ext Hand - [Q]uit";
+    } else {
+      text = " [C]ontinue this hand - [Q]uit";
+    }
+    return text;
+  };
+
+  std::string text;
+  text = nextUpdate();
+
+  door::ANSIColor bracketColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                               door::ATTR::BOLD);
+  door::ANSIColor innerColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+  door::ANSIColor outerColor(door::COLOR::GREEN, door::COLOR::BLUE,
+                             door::ATTR::BOLD);
+
+  door::renderFunction textRender =
+      commandLineRender(bracketColor, innerColor, outerColor);
+  door::Line nextLine(text, W);
+  nextLine.setRender(textRender);
+  // nextLine.setPadding(" ", panelColor);
+  nextLine.setUpdater(nextUpdate);
+  p->addLine(std::make_unique<door::Line>(nextLine));
   return p;
 }
 

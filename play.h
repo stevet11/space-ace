@@ -18,12 +18,14 @@ private:
   std::unique_ptr<door::Panel> streak_panel;
   std::unique_ptr<door::Panel> left_panel;
   std::unique_ptr<door::Panel> cmd_panel;
+  std::unique_ptr<door::Panel> next_quit_panel;
 
   std::unique_ptr<door::Panel> make_score_panel();
   std::unique_ptr<door::Panel> make_tripeaks(void);
   std::unique_ptr<door::Panel> make_command_panel(void);
   std::unique_ptr<door::Panel> make_streak_panel(void);
   std::unique_ptr<door::Panel> make_left_panel(void);
+  std::unique_ptr<door::Panel> make_next_panel(void);
 
   int hand;
   int total_hands;
