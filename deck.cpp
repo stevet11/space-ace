@@ -273,6 +273,22 @@ void Deck::part(int x, int y, door::Door &d, int level, bool left) {
 
 door::Panel *Deck::card(int c) { return cards[c]; }
 
+/**
+ * @brief Return panel for back of card.
+ *
+ * 0 = Blank
+ * 1 = level 1 (furthest/darkest)
+ * 2 = level 2
+ * 3 = level 3
+ * 4 = level 4 (closest/lightest)
+ *
+ * 5 = left (fills with left corner in place)
+ * 6 = right (fills right corner)
+ * 7 = both (fills both corners)
+ *
+ * @param level
+ * @return door::Panel*
+ */
 door::Panel *Deck::back(int level) { return backs[level]; }
 
 const std::array<std::pair<int, int>, 18> Deck::blocks = {
@@ -288,36 +304,53 @@ const std::array<std::pair<int, int>, 18> Deck::blocks = {
 /**
  * @brief Which card (if any) is unblocked by this card
  *
- * @param c
+ * @param card
  * @return * int
  */
-std::vector<int> Deck::unblocks(int c) {
+std::vector<int> Deck::unblocks(int card) {
   std::vector<int> result;
   for (size_t i = 0; i < blocks.size(); ++i) {
-    if ((blocks.at(i).first == c) || (blocks.at(i).second == c)) {
+    if ((blocks.at(i).first == card) || (blocks.at(i).second == card)) {
       result.push_back(i);
     }
   }
   return result;
 }
 
-bool Deck::can_play(int c1, int c2) {
-  int s1, s2;
-  s1 = is_rank(c1);
-  s2 = is_rank(c2);
+/**
+ * @brief Can this card play on this other card?
+ *
+ * @param card1
+ * @param card2
+ * @return true
+ * @return false
+ */
+bool Deck::can_play(int card1, int card2) {
+  int rank1, rank2;
+  rank1 = is_rank(card1);
+  rank2 = is_rank(card2);
 
   // this works %13 handles wrap-around for us.
-  if ((s1 + 1) % 13 == s2)
+  if ((rank1 + 1) % 13 == rank2)
     return true;
 
-  if (s1 == 0) {
-    s1 += 13;
+  if (rank1 == 0) {
+    rank1 += 13;
   }
-  if (s1 - 1 == s2)
+  if (rank1 - 1 == rank2)
     return true;
   return false;
 }
 
+/**
+ * @brief Returns marker
+ *
+ * 0 = blank
+ * 1 = [] symbol thing \xfe ■
+ *
+ * @param c
+ * @return door::Panel*
+ */
 door::Panel *Deck::marker(int c) { return mark[c]; }
 
 /**
@@ -552,6 +585,16 @@ void cardgo(int pos, int &x, int &y, int &level) {
   }
 }
 
+/**
+ * @brief shuffle deck of cards
+ *
+ * example of seeding the deck for a given date 2/27/2021 game 1
+ * std::seed_seq s1{2021, 2, 27, 1};
+ * vector<int> deck1 = card_shuffle(s1, 1);
+ * @param seed
+ * @param decks
+ * @return vector<int>
+ */
 cards card_shuffle(std::seed_seq &seed, int decks) {
   std::mt19937 gen;
 
@@ -659,6 +702,17 @@ int find_next(bool left, const cards &states, int current) {
   return pos;
 }
 
+/**
+ * @brief Find the next closest card to move to.
+ *
+ * Given the card states, this finds the next closest card.
+ * Uses current.
+ *
+ * return -1 there's no options to go to.  (END OF GAME)
+ * @param states
+ * @param current
+ * @return int
+ */
 int find_next_closest(const cards &states, int current) {
   int cx, cy, level;
   int current_x;

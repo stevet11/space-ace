@@ -81,11 +81,13 @@ int suit(int c);  // suit
 int rank(int c);  // rank
  */
 
-typedef std::vector<int> cards;
+typedef std::vector<int> cards; // or a "deck"
 
 class Deck {
 private:
+  // We assume for this game that there's only one deck back color.
   door::ANSIColor cardback;
+  // shared_ptr<door::Panel> for the win?
   vector<door::Panel *> cards;
   vector<door::Panel *> backs;
   vector<door::Panel *> mark;
@@ -111,130 +113,24 @@ public:
   int is_rank(int c);
   int is_suit(int c);
   int is_deck(int c);
-  /**
-   * @brief Can this rank play on this other rank?
-   *
-   * @param c1
-   * @param c2
-   * @return true
-   * @return false
-   */
-  bool can_play(int c1, int c2);
 
+  bool can_play(int card1, int card2);
   door::Panel *card(int c);
-  /**
-   * @brief Return panel for back of card.
-   *
-   * 0 = Blank
-   * 1 = level 1 (furthest/darkest)
-   * 2 = level 2
-   * 3 = level 3
-   * 4 = level 4 (closest/lightest)
-   *
-   * 5 = left (fills with left corner in place)
-   * 6 = right (fills right corner)
-   * 7 = both (fills both corners)
-   *
-   * @param level
-   * @return door::Panel*
-   */
-
   door::Panel *back(int level);
-  /**
-   * @brief Returns marker
-   *
-   * 0 = blank
-   * 1 = [] symbol thing \xfe ■
-   *
-   * @param c
-   * @return door::Panel*
-   */
   door::Panel *marker(int c);
+
   void part(int x, int y, door::Door &d, int level, bool left);
-  std::vector<int> unblocks(int c);
+  std::vector<int> unblocks(int card);
   const static std::array<std::pair<int, int>, 18> blocks;
 
   void remove_card(door::Door &door, int c, int off_x, int off_y, bool left,
                    bool right);
 };
 
-/**
- * @brief Given a position, space=3, height=3, return x,y and level.
- *
- * This is the older version that allows for space and h "height"
- * to be variable.  I'd rather have one that has them as constants.
- *
- * @param pos
- * @param space
- * @param h
- * @param x
- * @param y
- * @param level
- */
-[[deprecated("Use cardgo(int pos, int &x, int &y, int &level")]] void
-cardgo(int pos, int space, int h, int &x, int &y, int &level);
-
-/**
- * @brief Where does this card go?
- *
- * This finds x, y, and the level (for the card background)
- *
- * @param pos
- * @param x
- * @param y
- * @param level
- */
 void cardgo(int pos, int &x, int &y, int &level);
-
-/**
- * @brief shuffle deck of cards
- *
- * example of seeding the deck for a given date 2/27/2021 game 1
- * std::seed_seq s1{2021, 2, 27, 1};
- * vector<int> deck1 = card_shuffle(s1, 1);
- * @param seed
- * @param decks
- * @return vector<int>
- */
 cards card_shuffle(std::seed_seq &seed, int decks = 1);
-
-/**
- * @brief return vector of card states
- *
- * These are pre-initialized to 0.
- * Default to 1 deck (0-51), but this handles any number of decks.
- *
- * @param decks
- * @return cards
- */
-
 cards card_states(int decks = 1);
-
-/**
- * @brief Find the next card to move to.
- *
- * if (left) .. to the left, otherwise right
- * current is the current position we're on.
- *
- * return -1 failed to find anything.
- * @param left
- * @param states
- * @param current
- * @return int
- */
 int find_next(bool left, const cards &states, int current);
-
-/**
- * @brief Find the next closest card to move to.
- *
- * Given the card states, this finds the next closest card.
- * Uses current.
- *
- * return -1 there's no options to go to.  (END OF GAME)
- * @param states
- * @param current
- * @return int
- */
 int find_next_closest(const cards &states, int current);
 
 extern vector<std::string> deck_colors;
