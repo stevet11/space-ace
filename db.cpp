@@ -9,6 +9,14 @@
 #include "yaml-cpp/yaml.h"
 extern YAML::Node config;
 
+/*
+The database access is slow.
+
+So, make sure you set it up so that you do your writes right
+before you collect user input.  That way, the user won't see
+the lags.
+*/
+
 DBData::DBData(void)
     : db("space-data.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE) {
 
@@ -29,7 +37,7 @@ settings(username TEXT, setting TEXT, value TEXT, \
 PRIMARY KEY(username, setting));");
   db.exec("CREATE TABLE IF NOT EXISTS \
 scores ( \"username\" TEXT, \"when\" INTEGER, \
-\"date\" TEXT, \"hand\" INTEGER, \"score\" INTEGER, \
+\"date\" INTEGER, \"hand\" INTEGER, \"score\" INTEGER, \
 PRIMARY KEY(\"username\", \"date\", \"hand\"));");
 }
 
@@ -55,9 +63,10 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
   stmt_setSet->exec();
 }
 
-void DBData::save_score(time_t when, std::string date, int hand, int score) {
-  SQLite::Statement stmt(db, "INSERT INTO scores( \"username\", \"when\", "
-                             "\"date\", \"hand\", \"score\") VALUES(?,?,?,?);");
+void DBData::save_score(time_t when, time_t date, int hand, int score) {
+  SQLite::Statement stmt(db,
+                         "INSERT INTO scores( \"username\", \"when\", "
+                         "\"date\", \"hand\", \"score\") VALUES(?,?,?,?,?);");
   stmt.bind(1, user);
   stmt.bind(2, when);
   stmt.bind(3, date);
@@ -66,21 +75,21 @@ void DBData::save_score(time_t when, std::string date, int hand, int score) {
   stmt.exec();
 }
 
-bool DBData::has_played_day(time_t day) {
+int DBData::has_played_day(time_t day) {
   // get date from this
 
   // std::stringstream ss;
   // ss << std::put_time(std::localtime(&day), "%Y/%0m/%0d");
-  std::string today = make_date(day);
+
   SQLite::Statement stmt(
       db, "SELECT COUNT(*) FROM scores WHERE \"username\"=? AND \"DATE\"=?;");
   stmt.bind(1, user);
-  stmt.bind(2, today);
+  stmt.bind(2, day);
   int count = -1;
   if (stmt.executeStep()) {
     count = stmt.getColumn(0);
   };
-  return (count > 0);
+  return count;
 }
 
 std::string make_date(time_t tt) {
@@ -94,4 +103,18 @@ std::string make_date(time_t tt) {
 
   std::string date = ss.str();
   return date;
+}
+
+void standard_date(time_t &tt, int hour) {
+  std::tm *local_tm = localtime(&tt);
+  // adjust date to 2:00:00 AM
+
+  tt -= (local_tm->tm_min * 60) + local_tm->tm_sec;
+  while (local_tm->tm_hour < hour) {
+    ++local_tm->tm_hour;
+    tt += 60 * 60;
+  }
+  if (local_tm->tm_hour > hour) {
+    tt -= (60 * 60) * (local_tm->tm_hour - hour);
+  }
 }

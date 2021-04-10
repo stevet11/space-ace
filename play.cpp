@@ -30,11 +30,24 @@ For now, it will play today.
 
 PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
     : door{d}, db{dbd}, rng{r} {
-
+  get_logger = [this]() -> ofstream & { return door.log(); };
   init_values();
 
   play_day = std::chrono::system_clock::now();
-
+  // adjustment
+  time_t time_play_day = std::chrono::system_clock::to_time_t(play_day);
+  if (get_logger) {
+    get_logger() << "before: "
+                 << std::put_time(std::localtime(&time_play_day), "%F %R")
+                 << std::endl;
+  };
+  standard_date(time_play_day);
+  play_day = std::chrono::system_clock::from_time_t(time_play_day);
+  if (get_logger) {
+    get_logger() << "after: "
+                 << std::put_time(std::localtime(&time_play_day), "%F %R")
+                 << std::endl;
+  };
   spaceAceTriPeaks = make_tripeaks();
   score_panel = make_score_panel();
   streak_panel = make_streak_panel();
@@ -44,8 +57,6 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
     int mx = door.width;
     int my = door.height;
   */
-
-  get_logger = [this]() -> ofstream & { return door.log(); };
 }
 
 PlayCards::~PlayCards() { get_logger = nullptr; }
@@ -72,7 +83,6 @@ void PlayCards::bonus(void) {
 }
 
 int PlayCards::play_cards(void) {
-  play_day = std::chrono::system_clock::now();
   init_values();
   std::string currentDefault = db.getSetting("DeckColor", "ALL");
   get_logger() << "DeckColor shows as " << currentDefault << std::endl;
@@ -235,8 +245,10 @@ next_hand:
           if (current_streak > 1)
             score += current_streak * 5;
           score_panel->update(door);
+          /*
           if (get_logger)
             get_logger() << "score_panel update : " << score << std::endl;
+            */
 
           // play card!
           state.at(active_card) = 2;
@@ -307,9 +319,8 @@ next_hand:
                 }
               }
             } else {
-              // this would be a "top" card.  Should set status = 4 and
-              // display something here?
-              get_logger() << "top card cleared?" << std::endl;
+              // top card cleared
+              // get_logger() << "top card cleared?" << std::endl;
               // display something at active_card position
               int cx, cy, level;
               cardgo(active_card, cx, cy, level);
@@ -331,10 +342,25 @@ next_hand:
               if (new_active != -1) {
                 active_card = new_active;
               } else {
-                get_logger() << "This looks like END OF GAME." << std::endl;
-                get_logger() << "SCORE: " << score << std::endl;
+                get_logger() << "Winner!" << std::endl;
+
                 // bonus for cards left
+                int bonus = 15 * (51 - card_number);
+
+                score += 15 * (51 - card_number);
+                score_panel->update(door);
+                door << " BONUS: " << bonus << door::nl;
+                get_logger() << "SCORE: " << score << std::endl;
+
+                // if (!config[CHEATER]) {
+                time_t right_now = std::chrono::system_clock::to_time_t(
+                    std::chrono::system_clock::now());
+                db.save_score(right_now,
+                              std::chrono::system_clock::to_time_t(play_day),
+                              hand, score);
+                //}
                 press_a_key(door);
+
                 if (hand < total_hands) {
                   hand++;
                   // current_streak = 0;

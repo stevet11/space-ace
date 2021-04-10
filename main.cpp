@@ -439,7 +439,9 @@ int configure(door::Door &door, DBData &db) {
   std::string newColor;
 
   while (r >= 0) {
+
     if (save_deckcolor) {
+      door << menu;
       db.setSetting(deckcolor, newColor);
       save_deckcolor = false;
     }
