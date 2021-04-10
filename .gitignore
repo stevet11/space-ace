@@ -1,5 +1,7 @@
 door++*
 door++/*
+SQLiteCpp/*
+yaml-cpp/*
 *.log
 .vscode
 build
