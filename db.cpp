@@ -1,6 +1,7 @@
 #include "db.h"
 
 #include <SQLiteCpp/VariadicBind.h>
+
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -8,6 +9,10 @@
 // configuration settings access
 #include "yaml-cpp/yaml.h"
 extern YAML::Node config;
+
+#include <fstream>
+#include <functional>
+extern std::function<std::ofstream &(void)> get_logger;
 
 /*
 The database access is slow.
@@ -64,15 +69,21 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
 }
 
 void DBData::save_score(time_t when, time_t date, int hand, int score) {
-  SQLite::Statement stmt(db,
-                         "INSERT INTO scores( \"username\", \"when\", "
-                         "\"date\", \"hand\", \"score\") VALUES(?,?,?,?,?);");
-  stmt.bind(1, user);
-  stmt.bind(2, when);
-  stmt.bind(3, date);
-  stmt.bind(4, hand);
-  stmt.bind(5, score);
-  stmt.exec();
+  try {
+    SQLite::Statement stmt(db,
+                           "INSERT INTO scores( \"username\", \"when\", "
+                           "\"date\", \"hand\", \"score\") VALUES(?,?,?,?,?);");
+    stmt.bind(1, user);
+    stmt.bind(2, when);
+    stmt.bind(3, date);
+    stmt.bind(4, hand);
+    stmt.bind(5, score);
+    stmt.exec();
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+  }
 }
 
 int DBData::has_played_day(time_t day) {
