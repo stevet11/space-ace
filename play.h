@@ -28,12 +28,13 @@ private:
 
   int hand;
   int total_hands;
-  int card_number;
+  int play_card;
   int current_streak;
   int best_streak;
-  int active_card;
+  int select_card; // the card the player selects, has state=1
   unsigned long score;
-  Deck dp;
+
+  Deck dp; // deckPanels
   int off_x, off_y;
   const int height = 3;
 
