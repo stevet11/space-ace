@@ -7,6 +7,8 @@ class DBData {
   SQLite::Database db;
   void init(void);
   std::string user;
+  std::unique_ptr<SQLite::Statement> stmt_getSet;
+  std::unique_ptr<SQLite::Statement> stmt_setSet;
 
 public:
   DBData();

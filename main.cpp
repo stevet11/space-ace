@@ -1,5 +1,6 @@
 #include "door.h"
 #include "space.h"
+#include "yaml-cpp/yaml.h"
 #include <chrono>  // chrono::system_clock
 #include <ctime>   // localtime
 #include <iomanip> // put_time
@@ -12,6 +13,9 @@
 #include "play.h"
 #include "version.h"
 #include <algorithm> // transform
+
+// configuration here -- access via extern
+YAML::Node config;
 
 bool replace(std::string &str, const std::string &from, const std::string &to) {
   size_t start_pos = str.find(from);
@@ -29,10 +33,21 @@ bool replace(std::string &str, const char *from, const char *to) {
   return true;
 }
 
+bool file_exists(const std::string &name) {
+  ifstream f(name.c_str());
+  return f.good();
+}
+
+bool file_exists(const char *name) {
+  ifstream f(name);
+  return f.good();
+}
+
 door::ANSIColor from_string(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
 
+/*
 unsigned long score = 0;
 int hand = 1;
 int total_hands = 3;
@@ -42,6 +57,7 @@ int best_streak = 0;
 int active_card = 23;
 
 std::chrono::_V2::system_clock::time_point play_day;
+*/
 
 /*
 
@@ -418,8 +434,15 @@ int opt_from_string(std::string colorCode) {
 int configure(door::Door &door, DBData &db) {
   auto menu = make_config_menu();
   int r = 0;
+  bool save_deckcolor = false;
+  const char *deckcolor = "DeckColor";
+  std::string newColor;
 
   while (r >= 0) {
+    if (save_deckcolor) {
+      db.setSetting(deckcolor, newColor);
+      save_deckcolor = false;
+    }
     r = menu.choose(door);
     if (r > 0) {
       door << door::reset << door::cls;
@@ -427,8 +450,8 @@ int configure(door::Door &door, DBData &db) {
       if (c == 'D') {
         // Ok, deck colors
         // get default
-        std::string key("DeckColor");
-        std::string currentDefault = db.getSetting(key, std::string("ALL"));
+
+        std::string currentDefault = db.getSetting(deckcolor, "ALL");
         int currentOpt = opt_from_string(currentDefault);
 
         door << door::reset << door::cls;
@@ -439,11 +462,12 @@ int configure(door::Door &door, DBData &db) {
 
         if (newOpt >= 0) {
           newOpt--;
-          std::string newColor = from_color_option(newOpt);
+          newColor = from_color_option(newOpt);
           if (newOpt != currentOpt) {
-            door.log() << key << " was " << currentDefault << ", " << currentOpt
-                       << ". Now " << newColor << ", " << newOpt << std::endl;
-            db.setSetting(key, newColor);
+            door.log() << deckcolor << " was " << currentDefault << ", "
+                       << currentOpt << ". Now " << newColor << ", " << newOpt
+                       << std::endl;
+            save_deckcolor = true;
           }
         }
       }
@@ -455,6 +479,7 @@ int configure(door::Door &door, DBData &db) {
   return r;
 }
 
+/*
 door::Panel make_score_panel(door::Door &door) {
   const int W = 25;
   door::Panel p(W);
@@ -518,6 +543,7 @@ door::Panel make_score_panel(door::Door &door) {
 
   return p;
 }
+*/
 
 door::Panel make_about(void) {
   const int W = 60;
@@ -664,6 +690,41 @@ int main(int argc, char *argv[]) {
 
   DBData spacedb;
   spacedb.setUser(door.username);
+
+  if (file_exists("space-ace.yaml")) {
+    config = YAML::LoadFile("space-ace.yaml");
+  }
+
+  bool update_config = false;
+
+  // populate with "good" defaults
+  if (!config["hands_per_day"]) {
+    config["hands_per_day"] = 3;
+    update_config = true;
+  }
+
+  if (!config["date_format"]) {
+    config["date_format"] = "%B %d";
+    update_config = true;
+  }
+
+  if (!config["date_score"]) {
+    config["date_score"] = "%m/%d/%Y"; // or "%Y/%0m/%0d";
+    update_config = true;
+  }
+
+  /*
+    if (config["hands_per_day"]) {
+      get_logger() << "hands_per_day: " << config["hands_per_day"].as<int>()
+                   << std::endl;
+    }
+  */
+
+  // save configuration -- something was updated
+  if (update_config) {
+    std::ofstream fout("space-ace.yaml");
+    fout << config << std::endl;
+  }
 
   // retrieve lastcall
   time_t last_call = std::stol(spacedb.getSetting("LastCall", "0"));

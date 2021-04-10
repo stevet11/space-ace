@@ -6,6 +6,12 @@
 #include <iomanip> // put_time
 #include <sstream>
 
+// configuration settings access
+#include "yaml-cpp/yaml.h"
+extern YAML::Node config;
+
+#define CHEATER "CHEAT_YOUR_ASS_OFF"
+
 static std::function<std::ofstream &(void)> get_logger;
 
 static int press_a_key(door::Door &door) {
@@ -27,16 +33,18 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
 
   init_values();
 
+  play_day = std::chrono::system_clock::now();
+
   spaceAceTriPeaks = make_tripeaks();
   score_panel = make_score_panel();
   streak_panel = make_streak_panel();
   left_panel = make_left_panel();
   cmd_panel = make_command_panel();
+  /*
+    int mx = door.width;
+    int my = door.height;
+  */
 
-  int mx = door.width;
-  int my = door.height;
-
-  play_day = std::chrono::system_clock::now();
   get_logger = [this]() -> ofstream & { return door.log(); };
 }
 
@@ -44,10 +52,17 @@ PlayCards::~PlayCards() { get_logger = nullptr; }
 
 void PlayCards::init_values(void) {
   hand = 1;
-  total_hands = 3;
+  if (config["hands_per_day"]) {
+    total_hands = config["hands_per_day"].as<int>();
+  } else
+    total_hands = 3;
+
   card_number = 28;
   current_streak = 0;
   best_streak = 0;
+  std::string best;
+  best = db.getSetting("best_streak", "0");
+  best_streak = std::stoi(best);
   active_card = 23;
   score = 0;
 }
@@ -79,7 +94,7 @@ int PlayCards::play_cards(void) {
 
   off_x = (mx - game_width) / 2;
   off_y = (my - game_height) / 2;
-  int true_off_y = off_y;
+  // int true_off_y = off_y;
 
   // we can now position things properly centered
 
@@ -91,6 +106,7 @@ next_hand:
   card_number = 28;
   active_card = 23;
   score = 0;
+  current_streak = 0;
 
   // Use play_day to seed the rng
   {
@@ -137,9 +153,18 @@ next_hand:
   door::Panel *c;
 
   bool in_game = true;
+  bool save_streak = false;
+
   while (in_game) {
     // time might have updated, so update score panel too.
     score_panel->update(door);
+
+    // do the save here -- try to hide the database lag
+    if (save_streak) {
+      save_streak = false;
+      std::string best = std::to_string(best_streak);
+      db.setSetting("best_streak", best);
+    }
 
     r = door.sleep_key(door.inactivity);
     if (r > 0) {
@@ -152,6 +177,9 @@ next_hand:
           card_number++;
           current_streak = 0;
           streak_panel->update(door);
+
+          // update the cards left_panel
+          left_panel->update(door);
 
           // Ok, deal next card from the pile.
           int cx, cy, level;
@@ -167,15 +195,13 @@ next_hand:
           c = dp.card(deck.at(card_number));
           c->set(cx + off_x, cy + off_y);
           door << *c;
-          // update the cards left_panel
-          left_panel->update(door);
         }
         break;
       case 'R':
-        // now_what = false;
         redraw(false);
         break;
       case 'Q':
+        // possibly prompt here for [N]ext hand or [Q]uit ?
         in_game = false;
         break;
       case ' ':
@@ -193,16 +219,24 @@ next_hand:
                      << std::endl;
                      */
 
-        if (dp.can_play(deck.at(active_card), deck.at(card_number))) {
+        if (dp.can_play(deck.at(active_card), deck.at(card_number)) or
+            config[CHEATER]) {
           // if (true) {
           // yes we can.
           ++current_streak;
-          if (current_streak > best_streak)
+          if (current_streak > best_streak) {
             best_streak = current_streak;
+            if (!config[CHEATER]) {
+              save_streak = true;
+            }
+          }
           streak_panel->update(door);
           score += 10;
-          if (current_streak > 2)
-            score += 5;
+          if (current_streak > 1)
+            score += current_streak * 5;
+          score_panel->update(door);
+          if (get_logger)
+            get_logger() << "score_panel update : " << score << std::endl;
 
           // play card!
           state.at(active_card) = 2;
@@ -284,6 +318,7 @@ next_hand:
 
               score += 100;
               state.at(active_card) = 3; // handle this in the "redraw"
+              score_panel->update(door);
             }
 
             // Find new "number" for active_card to be.
@@ -297,10 +332,12 @@ next_hand:
                 active_card = new_active;
               } else {
                 get_logger() << "This looks like END OF GAME." << std::endl;
+                get_logger() << "SCORE: " << score << std::endl;
                 // bonus for cards left
                 press_a_key(door);
                 if (hand < total_hands) {
                   hand++;
+                  // current_streak = 0;
                   door << door::reset << door::cls;
                   goto next_hand;
                 }
@@ -554,10 +591,10 @@ std::unique_ptr<door::Panel> PlayCards::make_score_panel() {
       return text;
     };
     std::string scoreString = scoreUpdate();
-    door::Line score(scoreString, W);
-    score.setRender(svRender);
-    score.setUpdater(scoreUpdate);
-    p->addLine(std::make_unique<door::Line>(score));
+    door::Line scoreline(scoreString, W);
+    scoreline.setRender(svRender);
+    scoreline.setUpdater(scoreUpdate);
+    p->addLine(std::make_unique<door::Line>(scoreline));
   }
   {
     door::updateFunction timeUpdate = [this](void) -> std::string {
@@ -606,7 +643,11 @@ std::unique_ptr<door::Panel> PlayCards::make_streak_panel(void) {
     std::string text = "Playing: ";
     auto in_time_t = std::chrono::system_clock::to_time_t(play_day);
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%B %d");
+    if (config["date_format"]) {
+      std::string fmt = config["date_format"].as<std::string>();
+      ss << std::put_time(std::localtime(&in_time_t), fmt.c_str());
+    } else
+      ss << std::put_time(std::localtime(&in_time_t), "%B %d");
     text.append(ss.str());
     door::Line current(text, W);
     current.setRender(svRender);

@@ -5,9 +5,18 @@
 #include <iostream>
 #include <sstream>
 
+// configuration settings access
+#include "yaml-cpp/yaml.h"
+extern YAML::Node config;
+
 DBData::DBData(void)
     : db("space-data.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE) {
+
   init();
+  stmt_getSet = std::make_unique<SQLite::Statement>(
+      db, "SELECT value FROM settings WHERE username=? AND setting=?");
+  stmt_setSet = std::make_unique<SQLite::Statement>(
+      db, "REPLACE INTO settings(username, setting, value) VALUES(?,?,?);");
 }
 
 // DBData::DBData(void) : sql(std::string(DB_CONNECT_STRING)) {}
@@ -28,26 +37,22 @@ void DBData::setUser(std::string currentUser) { user = currentUser; }
 
 std::string DBData::getSetting(const std::string &setting,
                                std::string ifMissing) {
-  SQLite::Statement query(
-      db, "SELECT value FROM settings WHERE username=? AND setting=?");
-  query.reset();
-  query.bind(1, user);
-  query.bind(2, setting);
-  if (query.executeStep()) {
-    std::string value = query.getColumn(0);
+  stmt_getSet->reset();
+  stmt_getSet->bind(1, user);
+  stmt_getSet->bind(2, setting);
+  if (stmt_getSet->executeStep()) {
+    std::string value = stmt_getSet->getColumn(0);
     return value;
   };
   return ifMissing;
 }
 
 void DBData::setSetting(const std::string &setting, const std::string &value) {
-  SQLite::Statement stmt(
-      db, "REPLACE INTO settings(username, setting, value) VALUES(?,?,?);");
-  stmt.reset();
-  stmt.bind(1, user);
-  stmt.bind(2, setting);
-  stmt.bind(3, value);
-  stmt.exec();
+  stmt_setSet->reset();
+  stmt_setSet->bind(1, user);
+  stmt_setSet->bind(2, setting);
+  stmt_setSet->bind(3, value);
+  stmt_setSet->exec();
 }
 
 void DBData::save_score(time_t when, std::string date, int hand, int score) {
@@ -80,7 +85,13 @@ bool DBData::has_played_day(time_t day) {
 
 std::string make_date(time_t tt) {
   std::stringstream ss;
-  ss << std::put_time(std::localtime(&tt), "%Y/%0m/%0d");
+  if (config["date_score"]) {
+    std::string custom_format = config["date_score"].as<std::string>();
+    ss << std::put_time(std::localtime(&tt), custom_format.c_str());
+  } else {
+    ss << std::put_time(std::localtime(&tt), "%Y/%0m/%0d");
+  }
+
   std::string date = ss.str();
   return date;
 }
