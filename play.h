@@ -44,6 +44,7 @@ private:
   cards state;
 
   void redraw(bool dealing);
+  void bonus(void);
 
 public:
   PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r);
@@ -51,6 +52,7 @@ public:
 
   int play_cards(void);
   void init_values(void);
+
   door::renderFunction statusValue(door::ANSIColor status,
                                    door::ANSIColor value);
   door::renderFunction commandLineRender(door::ANSIColor bracket,

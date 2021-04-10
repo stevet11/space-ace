@@ -320,6 +320,20 @@ bool Deck::can_play(int c1, int c2) {
 
 door::Panel *Deck::marker(int c) { return mark[c]; }
 
+/**
+ * @brief remove_card
+ *
+ * This removes a card at a given position (c).
+ * It needs to know if there are cards underneath
+ * to the left or right.  (If so, we restore those missing parts.)
+ *
+ * @param door
+ * @param c
+ * @param off_x
+ * @param off_y
+ * @param left
+ * @param right
+ */
 void Deck::remove_card(door::Door &door, int c, int off_x, int off_y, bool left,
                        bool right) {
   int cx, cy, level;
@@ -372,6 +386,19 @@ XXXXX   XXXXX   XXXXX
 
 width = 5 * 10 + (2 * 9) = 50+18 = 68   !  I could do that!
 */
+
+/**
+ * @brief Where does this card go in relation to everything else?
+ *
+ * This function is deprecated, see the other cardgo.
+ *
+ * @param pos
+ * @param space
+ * @param h
+ * @param x
+ * @param y
+ * @param level
+ */
 void cardgo(int pos, int space, int h, int &x, int &y, int &level) {
   // special cases here
   if (pos == 28) {
@@ -542,6 +569,14 @@ cards card_shuffle(std::seed_seq &seed, int decks) {
   return deck;
 }
 
+/**
+ * @brief generate a vector of ints to track card states.
+ *
+ * This initializes everything to 0.
+ *
+ * @param decks
+ * @return cards
+ */
 cards card_states(int decks) {
   // auto states = std::unique_ptr<std::vector<int>>(); // (decks * 52, 0)>;
   std::vector<int> states;
@@ -556,6 +591,9 @@ cards card_states(int decks) {
  * current is the current active card.
  * states is the card states (0 = down, 1 = in play, 2 = removed)
  *
+ * updated: If we can't go any further left (or right), then
+ * roll around to the other side.
+ *
  * @param left
  * @param states
  * @param current
@@ -569,6 +607,12 @@ int find_next(bool left, const cards &states, int current) {
   int x;
   int pos = -1;
   int pos_x;
+
+  int max_pos = -1;
+  int max_x = -1;
+  int min_pos = -1;
+  int min_x = 100;
+
   if (left)
     pos_x = 0;
   else
@@ -580,6 +624,15 @@ int find_next(bool left, const cards &states, int current) {
       if (x == current)
         continue;
       cardgo(x, cx, cy, level);
+      // find max and min while we're iterating here
+      if (cx < min_x) {
+        min_pos = x;
+        min_x = cx;
+      }
+      if (cx > max_x) {
+        max_pos = x;
+        max_x = cx;
+      }
       if (left) {
         if ((cx < current_x) and (cx > pos_x)) {
           pos_x = cx;
@@ -591,6 +644,16 @@ int find_next(bool left, const cards &states, int current) {
           pos = x;
         }
       }
+    }
+  }
+  if (pos == -1) {
+    // we couldn't find one
+    if (left) {
+      // use max -- roll around to the right
+      pos = max_pos;
+    } else {
+      // use min -- roll around to the left
+      pos = min_pos;
     }
   }
   return pos;

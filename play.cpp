@@ -52,6 +52,10 @@ void PlayCards::init_values(void) {
   score = 0;
 }
 
+void PlayCards::bonus(void) {
+  door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD) << "BONUS";
+}
+
 int PlayCards::play_cards(void) {
   play_day = std::chrono::system_clock::now();
   init_values();
@@ -275,8 +279,9 @@ next_hand:
               // display something at active_card position
               int cx, cy, level;
               cardgo(active_card, cx, cy, level);
-              door << door::Goto(cx + off_x, cy + off_y) << door::reset
-                   << "BONUS";
+              door << door::Goto(cx + off_x, cy + off_y);
+              bonus();
+
               score += 100;
               state.at(active_card) = 3; // handle this in the "redraw"
             }
@@ -438,6 +443,11 @@ void PlayCards::redraw(bool dealing) {
         break;
       case 2:
         // no card to draw.  :)
+        break;
+      case 3:
+        // peak cleared, draw bonus
+        door << door::Goto(cx + off_x, cy + off_y);
+        bonus();
         break;
       }
     }
