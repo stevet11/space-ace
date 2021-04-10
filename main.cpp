@@ -831,7 +831,7 @@ int main(int argc, char *argv[]) {
     switch (r) {
     case 1: // play game
     {
-      PlayCards pc(door, spacedb, rng);
+      PlayCards pc(door, spacedb);
       r = pc.play_cards();
       // r = play_cards(door, spacedb, rng);
     }; break;

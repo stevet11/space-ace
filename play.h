@@ -12,7 +12,6 @@ class PlayCards {
 private:
   door::Door &door;
   DBData &db;
-  std::mt19937 &rng;
 
   std::unique_ptr<door::Panel> spaceAceTriPeaks;
   std::unique_ptr<door::Panel> score_panel;
@@ -48,7 +47,7 @@ private:
   void bonus(void);
 
 public:
-  PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r);
+  PlayCards(door::Door &d, DBData &dbd);
   ~PlayCards();
 
   int play_cards(void);
@@ -60,7 +59,5 @@ public:
                                          door::ANSIColor inner,
                                          door::ANSIColor outer);
 };
-
-int play_cards(door::Door &door, DBData &db, std::mt19937 &rng);
 
 #endif
