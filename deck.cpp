@@ -1,5 +1,6 @@
 #include "deck.h"
 
+#include "utils.h"
 #include <algorithm>
 #include <map>
 #include <sstream>
@@ -264,15 +265,15 @@ shared_panel Deck::card(int c) { return cards[c]; }
 /**
  * @brief Return panel for back of card.
  *
- * 0 = Blank
- * 1 = level 1 (furthest/darkest)
- * 2 = level 2
- * 3 = level 3
- * 4 = level 4 (closest/lightest)
+ * - 0 = Blank
+ * - 1 = level 1 (furthest/darkest)
+ * - 2 = level 2
+ * - 3 = level 3
+ * - 4 = level 4 (closest/lightest)
  *
- * 5 = left (fills with left corner in place)
- * 6 = right (fills right corner)
- * 7 = both (fills both corners)
+ * - 5 = left (fills with left corner in place)
+ * - 6 = right (fills right corner)
+ * - 7 = both (fills both corners)
  *
  * @param level
  * @return door::Panel*
@@ -290,7 +291,7 @@ const std::array<std::pair<int, int>, 18> Deck::blocks = {
 };
 
 /**
- * @brief Which card (if any) is unblocked by this card
+ * @brief Which card(s) are unblocked by this card?
  *
  * @param card
  * @return * int
@@ -974,6 +975,3 @@ door::ANSIColor stringToANSIColor(std::string colorCode) {
 }
 
 std::string stringFromColorOptions(int opt) { return deck_colors[opt]; }
-void string_toupper(std::string &str) {
-  std::transform(str.begin(), str.end(), str.begin(), ::toupper);
-}

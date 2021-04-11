@@ -1,25 +1,24 @@
 #include "play.h"
 #include "db.h"
 #include "deck.h"
+#include "utils.h"
 #include "version.h"
 
 #include <iomanip> // put_time
 #include <sstream>
 
-// configuration settings access
-#include "yaml-cpp/yaml.h"
-extern YAML::Node config;
-
 #define CHEATER "CHEAT_YOUR_ASS_OFF"
 
-static std::function<std::ofstream &(void)> get_logger;
+// static std::function<std::ofstream &(void)> get_logger;
 
+/*
 static int press_a_key(door::Door &door) {
   door << door::reset << "Press a key to continue...";
   int r = door.sleep_key(door.inactivity);
   door << door::nl;
   return r;
 }
+*/
 
 /*
 In the future, this will probably check to see if they can play today or not, as
@@ -33,20 +32,32 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
   init_values();
 
   play_day = std::chrono::system_clock::now();
+
   // adjustment
   time_t time_play_day = std::chrono::system_clock::to_time_t(play_day);
+  /*
   if (get_logger) {
     get_logger() << "before: "
                  << std::put_time(std::localtime(&time_play_day), "%F %R")
                  << std::endl;
   };
+  */
   normalizeDate(time_play_day);
   play_day = std::chrono::system_clock::from_time_t(time_play_day);
+  /*
   if (get_logger) {
     get_logger() << "after: "
                  << std::put_time(std::localtime(&time_play_day), "%F %R")
                  << std::endl;
   };
+  */
+
+  /*
+   * TODO:  Check the date with the db.  Have they already played up today?  If
+   * so, display calendar and find a day they can play.  Or, play missed hands
+   * for today.
+   */
+
   spaceAceTriPeaks = make_tripeaks();
   score_panel = make_score_panel();
   streak_panel = make_streak_panel();
@@ -63,7 +74,9 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
 PlayCards::~PlayCards() { get_logger = nullptr; }
 
 void PlayCards::init_values(void) {
+  // beware of hand=1 !  We might not be playing the first hand here!
   hand = 1;
+
   if (config["hands_per_day"]) {
     total_hands = config["hands_per_day"].as<int>();
   } else
@@ -79,6 +92,10 @@ void PlayCards::init_values(void) {
   score = 0;
 }
 
+/**
+ * @brief Display the bonus text, when you remove a peak.
+ *
+ */
 void PlayCards::bonus(void) {
   door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD) << "BONUS";
 }
@@ -150,7 +167,7 @@ next_hand:
     streak_panel->set(right_panel_x + off_x, off_yp);
     cmd_panel->set(left_panel_x + off_x, off_yp + 5);
 
-    // next panel position
+    // next panel position (top = card 10, centered)
     cardPos(10, cx, cy);
     int next_off_x = (mx - next_quit_panel->getWidth()) / 2;
     next_quit_panel->set(next_off_x, cy + off_y);
@@ -240,7 +257,7 @@ next_hand:
                 std::chrono::system_clock::now());
             db.saveScore(right_now,
                          std::chrono::system_clock::to_time_t(play_day), hand,
-                         score);
+                         0, score);
           }
           in_game = false;
           r = 'Q';
@@ -251,7 +268,7 @@ next_hand:
           time_t right_now = std::chrono::system_clock::to_time_t(
               std::chrono::system_clock::now());
           db.saveScore(right_now,
-                       std::chrono::system_clock::to_time_t(play_day), hand,
+                       std::chrono::system_clock::to_time_t(play_day), hand, 0,
                        score);
           hand++;
           goto next_hand;
@@ -405,7 +422,7 @@ next_hand:
                     std::chrono::system_clock::now());
                 db.saveScore(right_now,
                              std::chrono::system_clock::to_time_t(play_day),
-                             hand, score);
+                             hand, 1, score);
                 //}
                 next_quit_panel->update();
                 door << *next_quit_panel;
@@ -512,6 +529,15 @@ next_hand:
   return r;
 }
 
+/**
+ * @brief Redraw the entire play cards screen.
+ *
+ * If dealing then show delays when displaying cards, or turning them over.
+ *
+ * Otherwise, the user has requested a redraw -- and don't delay.
+ *
+ * @param dealing
+ */
 void PlayCards::redraw(bool dealing) {
   shared_panel c;
 

@@ -1,18 +1,11 @@
 #include "db.h"
+#include "utils.h"
 
 #include <SQLiteCpp/VariadicBind.h>
 
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-
-// configuration settings access
-#include "yaml-cpp/yaml.h"
-extern YAML::Node config;
-
-#include <fstream>
-#include <functional>
-extern std::function<std::ofstream &(void)> get_logger;
 
 /*
 The database access is slow.
@@ -47,7 +40,7 @@ settings(username TEXT, setting TEXT, value TEXT, \
 PRIMARY KEY(username, setting));");
     db.exec("CREATE TABLE IF NOT EXISTS \
 scores ( \"username\" TEXT, \"when\" INTEGER, \
-\"date\" INTEGER, \"hand\" INTEGER, \"score\" INTEGER, \
+\"date\" INTEGER, \"hand\" INTEGER, \"won\" INTEGER, \"score\" INTEGER, \
 PRIMARY KEY(\"username\", \"date\", \"hand\"));");
   } catch (std::exception &e) {
     if (get_logger) {
@@ -119,23 +112,25 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
  * @param when now()
  * @param date what day they played
  * @param hand which hand they played
+ * @param won did they win? 1/0
  * @param score
  */
-void DBData::saveScore(time_t when, time_t date, int hand, int score) {
+void DBData::saveScore(time_t when, time_t date, int hand, int won, int score) {
   try {
-    SQLite::Statement stmt(db,
-                           "INSERT INTO scores( \"username\", \"when\", "
-                           "\"date\", \"hand\", \"score\") VALUES(?,?,?,?,?);");
+    SQLite::Statement stmt(
+        db, "INSERT INTO scores( \"username\", \"when\", "
+            "\"date\", \"hand\", \"won\", \"score\") VALUES(?,?,?,?,?,?);");
     stmt.bind(1, user);
     stmt.bind(2, when);
     stmt.bind(3, date);
     stmt.bind(4, hand);
-    stmt.bind(5, score);
+    stmt.bind(5, won);
+    stmt.bind(6, score);
     stmt.exec();
   } catch (std::exception &e) {
     if (get_logger) {
       get_logger() << "saveScore( " << when << "," << date << "," << hand << ","
-                   << score << " ): " << user << std::endl;
+                   << won << "," << score << " ): " << user << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
   }
@@ -168,6 +163,80 @@ int DBData::handsPlayedOnDay(time_t day) {
   }
   return 0;
 }
+
+std::vector<scores_data> DBData::getScoresOnDay(time_t date) {
+  std::vector<scores_data> scores;
+  try {
+    // \"when\",
+    SQLite::Statement stmt(db, "SELECT \"username\", \"date\", \"hand\", "
+                               "\"won\", \"score\" FROM SCORES WHERE "
+                               "\"date\"=? ORDER BY \"username\", \"hand\";");
+    stmt.bind(1, date);
+    while (stmt.executeStep()) {
+      scores_data sd;
+      sd.user = (const char *)stmt.getColumn(0);
+      sd.date = stmt.getColumn(1);
+      sd.hand = stmt.getColumn(2);
+      sd.won = stmt.getColumn(3);
+      sd.score = stmt.getColumn(4);
+      scores.push_back(sd);
+    }
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "getScoresOnDay( " << date << " ): " << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    scores.clear();
+  }
+  return scores;
+}
+
+std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
+  std::map<time_t, std::vector<scores_data>> scores;
+  try {
+    SQLite::Statement stmt(db, "SELECT \"username\", \"date\", \"hand\", "
+                               "\"won\", \"score\" FROM SCORES "
+                               "ORDER BY \"date\", \"username\", \"hand\";");
+    time_t current = 0;
+    std::vector<scores_data> vsd;
+
+    while (stmt.executeStep()) {
+      time_t the_date = stmt.getColumn(1);
+
+      if (current == 0) {
+        // ok, we've got the first one!
+        current = the_date;
+      } else {
+        // Ok, are we on another date now?
+        if (the_date != current) {
+          scores[current] = std::move(vsd);
+          vsd.clear();
+          current = the_date;
+        }
+      }
+      scores_data sd;
+      sd.user = (const char *)stmt.getColumn(0);
+      sd.date = the_date; // stmt.getColumn(1);
+      sd.hand = stmt.getColumn(2);
+      sd.won = stmt.getColumn(3);
+      sd.score = stmt.getColumn(4);
+      vsd.push_back(sd);
+    }
+    if (!vsd.empty()) {
+      scores[current] = std::move(vsd);
+    }
+    vsd.clear();
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "getScores(): " << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    scores.clear();
+  }
+  return scores;
+}
+
+void DBData::expireScores(void) {}
 
 /**
  * @brief Format date to string.

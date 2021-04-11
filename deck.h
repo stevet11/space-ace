@@ -140,6 +140,4 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
 door::ANSIColor stringToANSIColor(std::string colorCode);
 std::string stringFromColorOptions(int opt);
 
-void string_toupper(std::string &str);
-
 #endif

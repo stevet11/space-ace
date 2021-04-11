@@ -3,6 +3,18 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 
+#include <map>
+#include <string>
+#include <vector>
+
+typedef struct {
+  time_t date;
+  std::string user;
+  int hand;
+  int score;
+  int won;
+} scores_data;
+
 class DBData {
   SQLite::Database db;
   void create_tables(void);
@@ -24,7 +36,12 @@ public:
   void clearUser(void) { user.clear(); };
   std::string getSetting(const std::string &setting, std::string ifMissing);
   void setSetting(const std::string &setting, const std::string &value);
-  void saveScore(time_t when, time_t date, int hand, int score);
+  void saveScore(time_t when, time_t date, int hand, int won, int score);
+
+  std::vector<scores_data> getScoresOnDay(time_t date);
+  std::map<time_t, std::vector<scores_data>> getScores(void);
+  void expireScores(void);
+
   int handsPlayedOnDay(time_t day);
 };
 

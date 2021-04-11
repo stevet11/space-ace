@@ -11,37 +11,12 @@
 #include "db.h"
 #include "deck.h"
 #include "play.h"
+#include "utils.h"
 #include "version.h"
 #include <algorithm> // transform
 
 // configuration here -- access via extern
 YAML::Node config;
-
-bool replace(std::string &str, const std::string &from, const std::string &to) {
-  size_t start_pos = str.find(from);
-  if (start_pos == std::string::npos)
-    return false;
-  str.replace(start_pos, from.length(), to);
-  return true;
-}
-
-bool replace(std::string &str, const char *from, const char *to) {
-  size_t start_pos = str.find(from);
-  if (start_pos == std::string::npos)
-    return false;
-  str.replace(start_pos, strlen(from), to);
-  return true;
-}
-
-bool file_exists(const std::string &name) {
-  ifstream f(name.c_str());
-  return f.good();
-}
-
-bool file_exists(const char *name) {
-  ifstream f(name);
-  return f.good();
-}
 
 door::ANSIColor stringToANSIColor(std::string colorCode);
 
@@ -706,7 +681,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (!config["date_format"]) {
-    config["date_format"] = "%B %d";
+    config["date_format"] = "%B %d"; // Month day or "%b %d,%Y" Mon,d YYYY
     update_config = true;
   }
 
@@ -837,7 +812,37 @@ int main(int argc, char *argv[]) {
     }; break;
 
     case 2: // view scores
-      door << "Show scores goes here!" << door::nl;
+    {
+      door << door::cls;
+      auto all_scores = spacedb.getScores();
+      for (auto it : all_scores) {
+        time_t on_this_date = it.first;
+        std::string nice_date = convertDateToDateScoreFormat(on_this_date);
+        door << "  *** " << nice_date << " ***" << door::nl;
+        scores_data merge;
+
+        for (auto sd : it.second) {
+          if (merge.user.empty())
+            merge = sd;
+          else {
+            if (merge.user == sd.user) {
+              // merge in the information
+              merge.hand = sd.hand;
+              merge.won += sd.won;
+              merge.score += sd.score;
+            } else {
+              // Ok, output the merged data and reset
+              door << setw(15) << merge.user << " " << merge.hand << " "
+                   << merge.won << " " << sd.score << door::nl;
+              merge = sd;
+            }
+          }
+        }
+        door << setw(15) << merge.user << " " << merge.hand << " " << merge.won
+             << " " << merge.score << door::nl;
+      }
+      door << "====================" << door::nl;
+    }
       r = press_a_key(door);
       break;
 
