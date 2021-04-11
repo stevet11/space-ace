@@ -17,6 +17,7 @@ Deck::Deck(door::ANSIColor backcolor) : card_back_color{backcolor} {
 }
 
 Deck::~Deck() {
+  /*
   for (auto c : cards) {
     delete c;
   }
@@ -29,43 +30,58 @@ Deck::~Deck() {
     delete m;
   }
   mark.clear();
+  */
 }
 
 Deck::Deck(Deck &&ref) {
   card_back_color = ref.card_back_color;
+  /*
   for (auto c : cards)
     delete c;
+
   cards.clear();
+  */
   cards = ref.cards;
   ref.cards.clear();
+  /*
   for (auto b : backs)
     delete b;
   backs.clear();
+  */
   backs = ref.backs;
   ref.backs.clear();
+  /*
   for (auto m : mark)
     delete m;
   mark.clear();
+  */
   mark = ref.mark;
+
   ref.mark.clear();
   // card_height = ref.card_height;
 };
 
 Deck &Deck::operator=(Deck &&ref) {
   card_back_color = ref.card_back_color;
+  /*
   for (auto c : cards)
     delete c;
   cards.clear();
+  */
   cards = ref.cards;
   ref.cards.clear();
+  /*
   for (auto b : backs)
     delete b;
   backs.clear();
+  */
   backs = ref.backs;
   ref.backs.clear();
+  /*
   for (auto m : mark)
     delete m;
   mark.clear();
+  */
   mark = ref.mark;
   ref.mark.clear();
   // card_height = ref.card_height;
@@ -123,7 +139,7 @@ std::string Deck::suitSymbol(int c) {
   return std::string("!", 1);
 }
 
-door::Panel *Deck::cardOf(int c) {
+shared_panel Deck::cardOf(int c) {
   int suit = getSuit(c);
   int rank = getRank(c);
   bool is_red = (suit < 2);
@@ -134,7 +150,7 @@ door::Panel *Deck::cardOf(int c) {
   } else {
     color = door::ANSIColor(door::COLOR::BLACK, door::COLOR::WHITE);
   }
-  door::Panel *p = new door::Panel(0, 0, 5);
+  shared_panel p = std::make_shared<door::Panel>(0, 0, 5);
   // setColor sets border_color.  NOT WHAT I WANT.
   // p->setColor(color);
   char r = rankSymbol(rank);
@@ -209,12 +225,12 @@ std::string Deck::backSymbol(int level) {
   return c;
 }
 
-door::Panel *Deck::backOf(int level) {
+shared_panel Deck::backOf(int level) {
   // using: \xb0, 0xb1, 0xb2, 0xdb
   // OR:    \u2591, \u2592, \u2593, \u2588
 
   // door::ANSIColor color(door::COLOR::RED, door::COLOR::BLACK);
-  door::Panel *p = new door::Panel(0, 0, 5);
+  shared_panel p = std::make_shared<door::Panel>(0, 0, 5);
   std::string c = backSymbol(level);
   std::string l = c + c + c + c + c;
   for (int x = 0; x < card_height; ++x) {
@@ -225,8 +241,8 @@ door::Panel *Deck::backOf(int level) {
   return p;
 }
 
-door::Panel *Deck::markOf(int c) {
-  door::Panel *p = new door::Panel(1);
+shared_panel Deck::markOf(int c) {
+  shared_panel p = std::make_shared<door::Panel>(1);
   door::ANSIColor color = door::ANSIColor(
       door::COLOR::BLUE, door::COLOR::WHITE); // , door::ATTR::BOLD);
   std::string m;
@@ -243,7 +259,7 @@ door::Panel *Deck::markOf(int c) {
   return p;
 }
 
-door::Panel *Deck::card(int c) { return cards[c]; }
+shared_panel Deck::card(int c) { return cards[c]; }
 
 /**
  * @brief Return panel for back of card.
@@ -261,7 +277,7 @@ door::Panel *Deck::card(int c) { return cards[c]; }
  * @param level
  * @return door::Panel*
  */
-door::Panel *Deck::back(int level) { return backs[level]; }
+shared_panel Deck::back(int level) { return backs[level]; }
 
 const std::array<std::pair<int, int>, 18> Deck::blocks = {
     make_pair(3, 4),   make_pair(5, 6),   make_pair(7, 8), // end row 1
@@ -323,7 +339,7 @@ bool Deck::canPlay(int card1, int card2) {
  * @param c
  * @return door::Panel*
  */
-door::Panel *Deck::marker(int c) { return mark[c]; }
+shared_panel Deck::marker(int c) { return mark[c]; }
 
 /**
  * @brief removeCard

@@ -211,4 +211,10 @@ void normalizeDate(time_t &tt, int hour) {
   if (local_tm->tm_hour > hour) {
     tt -= (60 * 60) * (local_tm->tm_hour - hour);
   }
+  /* // possible DST adjustment. LMTATSM
+  if (local_tm->tm_isdst) {
+    // DST in effect
+    tt -= (60*60);
+  }
+  */
 }

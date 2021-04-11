@@ -90,14 +90,14 @@ private:
   // We assume for this game that there's only one deck back color.
   door::ANSIColor card_back_color;
 
-  vector<door::Panel *> cards;
-  vector<door::Panel *> backs;
-  vector<door::Panel *> mark;
+  vector<shared_panel> cards;
+  vector<shared_panel> backs;
+  vector<shared_panel> mark;
 
-  door::Panel *cardOf(int c);
+  shared_panel cardOf(int c);
   std::string backSymbol(int level);
-  door::Panel *backOf(int level);
-  door::Panel *markOf(int c);
+  shared_panel backOf(int level);
+  shared_panel markOf(int c);
   char rankSymbol(int c);
   std::string suitSymbol(int c);
   const int card_height = 3;
@@ -116,9 +116,9 @@ public:
   int getSuit(int c);
   int getDeck(int c);
   bool canPlay(int card1, int card2);
-  door::Panel *card(int c);
-  door::Panel *back(int level);
-  door::Panel *marker(int c);
+  shared_panel card(int c);
+  shared_panel back(int level);
+  shared_panel marker(int c);
   std::vector<int> unblocks(int card);
 
   void removeCard(door::Door &door, int c, int off_x, int off_y, bool left,

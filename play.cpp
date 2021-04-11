@@ -153,7 +153,7 @@ next_hand:
     // next panel position
     cardPos(10, cx, cy);
     int next_off_x = (mx - next_quit_panel->getWidth()) / 2;
-    next_quit_panel->set(next_off_x + off_x, cy + off_y);
+    next_quit_panel->set(next_off_x, cy + off_y);
   }
 
   bool dealing = true;
@@ -166,7 +166,7 @@ next_hand:
   left_panel->update(door);
   door << door::reset;
 
-  door::Panel *c;
+  shared_panel c;
 
   bool in_game = true;
   bool save_streak = false;
@@ -513,7 +513,7 @@ next_hand:
 }
 
 void PlayCards::redraw(bool dealing) {
-  door::Panel *c;
+  shared_panel c;
 
   door << door::reset << door::cls;
   door << *spaceAceTriPeaks;
