@@ -164,8 +164,16 @@ int DBData::handsPlayedOnDay(time_t day) {
   return 0;
 }
 
-std::vector<scores_data> DBData::getScoresOnDay(time_t date) {
-  std::vector<scores_data> scores;
+/*
+ * If you're looking at scores, you're not really looking for all the details.
+ * I think using the group/SUM would be better, and it sorts scores from highest
+ * to lowest.  Let SQL do the work for me.
+ */
+// select date,username,SUM(score),SUM(won) FROM scores group by date,username
+// ORDER BY SUM(score) DESC;
+
+std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
+  std::vector<scores_details> scores;
   try {
     // \"when\",
     SQLite::Statement stmt(db, "SELECT \"username\", \"date\", \"hand\", "
@@ -173,7 +181,7 @@ std::vector<scores_data> DBData::getScoresOnDay(time_t date) {
                                "\"date\"=? ORDER BY \"username\", \"hand\";");
     stmt.bind(1, date);
     while (stmt.executeStep()) {
-      scores_data sd;
+      scores_details sd;
       sd.user = (const char *)stmt.getColumn(0);
       sd.date = stmt.getColumn(1);
       sd.hand = stmt.getColumn(2);
@@ -194,14 +202,14 @@ std::vector<scores_data> DBData::getScoresOnDay(time_t date) {
 std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   std::map<time_t, std::vector<scores_data>> scores;
   try {
-    SQLite::Statement stmt(db, "SELECT \"username\", \"date\", \"hand\", "
-                               "\"won\", \"score\" FROM SCORES "
-                               "ORDER BY \"date\", \"username\", \"hand\";");
+    SQLite::Statement stmt(
+        db, "SELECT \"date\",\"username\",SUM(score),SUM(won) FROM scores "
+            "GROUP BY \"date\",username ORDER BY SUM(score) DESC;");
     time_t current = 0;
     std::vector<scores_data> vsd;
 
     while (stmt.executeStep()) {
-      time_t the_date = stmt.getColumn(1);
+      time_t the_date = stmt.getColumn(0);
 
       if (current == 0) {
         // ok, we've got the first one!
@@ -215,11 +223,10 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
         }
       }
       scores_data sd;
-      sd.user = (const char *)stmt.getColumn(0);
-      sd.date = the_date; // stmt.getColumn(1);
-      sd.hand = stmt.getColumn(2);
+      sd.user = (const char *)stmt.getColumn(1);
+      sd.date = the_date;
+      sd.score = stmt.getColumn(2);
       sd.won = stmt.getColumn(3);
-      sd.score = stmt.getColumn(4);
       vsd.push_back(sd);
     }
     if (!vsd.empty()) {

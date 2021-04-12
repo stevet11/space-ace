@@ -819,30 +819,15 @@ int main(int argc, char *argv[]) {
         time_t on_this_date = it.first;
         std::string nice_date = convertDateToDateScoreFormat(on_this_date);
         door << "  *** " << nice_date << " ***" << door::nl;
-        scores_data merge;
 
         for (auto sd : it.second) {
-          if (merge.user.empty())
-            merge = sd;
-          else {
-            if (merge.user == sd.user) {
-              // merge in the information
-              merge.hand = sd.hand;
-              merge.won += sd.won;
-              merge.score += sd.score;
-            } else {
-              // Ok, output the merged data and reset
-              door << setw(15) << merge.user << " " << merge.hand << " "
-                   << merge.won << " " << sd.score << door::nl;
-              merge = sd;
-            }
-          }
+          door << setw(15) << sd.user << " " << sd.won << " " << sd.score
+               << door::nl;
         }
-        door << setw(15) << merge.user << " " << merge.hand << " " << merge.won
-             << " " << merge.score << door::nl;
       }
       door << "====================" << door::nl;
     }
+
       r = press_a_key(door);
       break;
 
@@ -918,7 +903,7 @@ int main(int argc, char *argv[]) {
   if (x == 60)
     goto TIMEOUT;
 
-*/
+  */
 
 #ifdef NNY
 

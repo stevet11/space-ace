@@ -13,6 +13,13 @@ typedef struct {
   int hand;
   int score;
   int won;
+} scores_details;
+
+typedef struct {
+  time_t date;
+  std::string user;
+  int score;
+  int won;
 } scores_data;
 
 class DBData {
@@ -38,7 +45,7 @@ public:
   void setSetting(const std::string &setting, const std::string &value);
   void saveScore(time_t when, time_t date, int hand, int won, int score);
 
-  std::vector<scores_data> getScoresOnDay(time_t date);
+  std::vector<scores_details> getScoresOnDay(time_t date);
   std::map<time_t, std::vector<scores_data>> getScores(void);
   void expireScores(void);
 
