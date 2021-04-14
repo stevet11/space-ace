@@ -690,6 +690,11 @@ int main(int argc, char *argv[]) {
     update_config = true;
   }
 
+  if (!config["makeup_per_day"]) {
+    config["makeup_per_day"] = 5;
+    update_config = true;
+  }
+
   /*
     if (config["hands_per_day"]) {
       get_logger() << "hands_per_day: " << config["hands_per_day"].as<int>()

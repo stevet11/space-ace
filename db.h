@@ -50,6 +50,7 @@ public:
   void expireScores(void);
 
   int handsPlayedOnDay(time_t day);
+  std::map<time_t, int> whenPlayed(void);
 };
 
 void normalizeDate(time_t &tt, int hour = 2);

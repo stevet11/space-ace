@@ -199,6 +199,12 @@ std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
   return scores;
 }
 
+/**
+ * @brief Gets scores, time_t is day, vector has user and scores sorted highest
+ * to lowest.
+ *
+ * @return std::map<time_t, std::vector<scores_data>>
+ */
 std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   std::map<time_t, std::vector<scores_data>> scores;
   try {
@@ -243,6 +249,41 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   return scores;
 }
 
+/**
+ * @brief When has the user played?
+ *
+ * This returns a map of date (time_t), and number of hands played on that date.
+ *
+ * @return std::map<time_t, int>
+ */
+std::map<time_t, int> DBData::whenPlayed(void) {
+  // select "date", count(hand) from scores where username='?' group by
+  // "date";
+  std::map<time_t, int> plays;
+  try {
+    SQLite::Statement stmt(db, "SELECT \"date\", COUNT(hand) FROM scores WHERE "
+                               "username='?' GROUP BY \"date\";");
+    stmt.bind(1, user);
+
+    while (stmt.executeStep()) {
+      plays[stmt.getColumn(0)] = stmt.getColumn(1);
+    }
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "whenPlayed(): " << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    plays.clear();
+  }
+  return plays;
+}
+
+/**
+ * @brief This will expire out old scores
+ *
+ * @todo implement, but don't throw away high scores.
+ *
+ */
 void DBData::expireScores(void) {}
 
 /**

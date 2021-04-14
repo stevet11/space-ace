@@ -967,8 +967,9 @@ std::unique_ptr<door::Panel> PlayCards::make_next_panel(void) {
       commandLineRender(bracketColor, innerColor, outerColor);
   door::Line nextLine(text, W);
   nextLine.setRender(textRender);
-  // nextLine.setPadding(" ", panelColor);
+  nextLine.setPadding("  ", panelColor);
   nextLine.setUpdater(nextUpdate);
+  nextLine.fit();
   p->addLine(std::make_unique<door::Line>(nextLine));
   return p;
 }
