@@ -140,4 +140,14 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
 door::ANSIColor stringToANSIColor(std::string colorCode);
 std::string stringFromColorOptions(int opt);
 
+door::Panel make_about(void);
+void display_starfield(door::Door &door, std::mt19937 &rng);
+void display_space_ace(door::Door &door);
+void display_starfield_space_ace(door::Door &door, std::mt19937 &rng);
+
+door::Panel make_timeout(int mx, int my);
+door::Panel make_notime(int mx, int my);
+door::Menu make_main_menu(void);
+door::Menu make_config_menu(void);
+door::Menu make_deck_menu(void);
 #endif

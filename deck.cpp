@@ -1,6 +1,8 @@
 #include "deck.h"
 
+#include "space.h"
 #include "utils.h"
+#include "version.h"
 #include <algorithm>
 #include <map>
 #include <sstream>
@@ -270,10 +272,6 @@ shared_panel Deck::card(int c) { return cards[c]; }
  * - 2 = level 2
  * - 3 = level 3
  * - 4 = level 4 (closest/lightest)
- *
- * - 5 = left (fills with left corner in place)
- * - 6 = right (fills right corner)
- * - 7 = both (fills both corners)
  *
  * @param level
  * @return door::Panel*
@@ -975,3 +973,321 @@ door::ANSIColor stringToANSIColor(std::string colorCode) {
 }
 
 std::string stringFromColorOptions(int opt) { return deck_colors[opt]; }
+
+door::Panel make_about(void) {
+  const int W = 60;
+  door::Panel about(W);
+  about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
+  about.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                 door::ATTR::BOLD));
+
+  about.addLine(std::make_unique<door::Line>("About This Door", W));
+  about.addLine(std::make_unique<door::Line>(
+      "---------------------------------", W,
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
+  /*
+  123456789012345678901234567890123456789012345678901234567890-60
+  This door was written by Bugz.
+
+  It is written in c++, only supports Linux, and replaces
+  opendoors.
+
+  It's written in c++, and replaces the outdated opendoors
+  library.
+
+   */
+  about.addLine(
+      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W));
+  std::string copyright = SPACEACE_COPYRIGHT;
+  if (door::unicode) {
+    replace(copyright, "(C)", "\u00a9");
+  }
+
+  about.addLine(std::make_unique<door::Line>(copyright, W));
+  about.addLine(std::make_unique<door::Line>("", W));
+  about.addLine(
+      std::make_unique<door::Line>("This door was written by Bugz.", W));
+  about.addLine(std::make_unique<door::Line>("", W));
+  about.addLine(std::make_unique<door::Line>(
+      "It is written in door++, using c++, only support Linux.", W));
+
+  /*
+    door::updateFunction updater = [](void) -> std::string {
+      std::string text = "Currently: ";
+      text.append(return_current_time_and_date());
+      return text;
+    };
+    std::string current = updater();
+    door::Line active(current, 60);
+    active.setUpdater(updater);
+    active.setRender(statusValue(
+        door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+    door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
+    door::COLOR::BLUE, door::ATTR::BOLD)));
+    about.addLine(std::make_unique<door::Line>(active));
+  */
+
+  return about;
+}
+
+void display_starfield(door::Door &door, std::mt19937 &rng) {
+  door << door::reset << door::cls;
+
+  int mx = door.width;
+  int my = door.height;
+
+  // display starfield
+  const char *stars[2];
+
+  stars[0] = ".";
+  if (door::unicode) {
+    stars[1] = "\u2219"; // "\u00b7";
+
+  } else {
+    stars[1] = "\xf9"; // "\xfa";
+  };
+
+  {
+    // Make uniform random distribution between 1 and MAX screen size X/Y
+    std::uniform_int_distribution<int> uni_x(1, mx);
+    std::uniform_int_distribution<int> uni_y(1, my);
+
+    door::ANSIColor white(door::COLOR::WHITE);
+    door::ANSIColor dark(door::COLOR::BLACK, door::ATTR::BRIGHT);
+
+    // 10 is too many, 100 is too few. 40 looks ok.
+    int MAX_STARS = ((mx * my) / 40);
+    // door.log() << "Generating starmap using " << mx << "," << my << " : "
+    //           << MAX_STARS << " stars." << std::endl;
+
+    for (int x = 0; x < MAX_STARS; x++) {
+      door::Goto star_at(uni_x(rng), uni_y(rng));
+      door << star_at;
+      if (x % 5 < 2)
+        door << dark;
+      else
+        door << white;
+
+      if (x % 2 == 0)
+        door << stars[0];
+      else
+        door << stars[1];
+    }
+  }
+}
+
+void display_space_ace(door::Door &door) {
+  int mx = door.width;
+  int my = door.height;
+
+  // space_ace is 72 chars wide, 6 high
+  int sa_x = (mx - 72) / 2;
+  int sa_y = (my - 6) / 2;
+
+  // output the SpaceAce logo -- centered!
+  for (const auto s : space) {
+    door::Goto sa_at(sa_x, sa_y);
+    door << sa_at;
+    if (door::unicode) {
+      std::string unicode;
+      door::cp437toUnicode(s, unicode);
+      door << unicode; // << door::nl;
+    } else
+      door << s; // << door::nl;
+    sa_y++;
+  }
+  // pause 5 seconds so they can enjoy our awesome logo -- if they want.
+  door.sleep_key(5);
+}
+
+void display_starfield_space_ace(door::Door &door, std::mt19937 &rng) {
+  // mx = door.width;
+  // my = door.height;
+
+  display_starfield(door, rng);
+  display_space_ace(door);
+  door << door::reset;
+}
+
+door::Panel make_timeout(int mx, int my) {
+  door::ANSIColor yellowred =
+      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::RED, door::ATTR::BOLD);
+
+  std::string line_text("Sorry, you've been inactive for too long.");
+  int msgWidth = line_text.length() + (2 * 3); // + padding * 2
+  door::Panel timeout((mx - (msgWidth)) / 2, my / 2 + 4, msgWidth);
+  // place.setTitle(std::make_unique<door::Line>(title), 1);
+  timeout.setStyle(door::BorderStyle::DOUBLE);
+  timeout.setColor(yellowred);
+
+  door::Line base(line_text);
+  base.setColor(yellowred);
+  std::string pad1(3, ' ');
+
+  /*
+      std::string pad1(3, '\xb0');
+      if (door::unicode) {
+        std::string unicode;
+        door::cp437toUnicode(pad1.c_str(), unicode);
+        pad1 = unicode;
+      }
+  */
+
+  base.setPadding(pad1, yellowred);
+  // base.setColor(door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLACK));
+  std::unique_ptr<door::Line> stuff = std::make_unique<door::Line>(base);
+
+  timeout.addLine(std::make_unique<door::Line>(base));
+  return timeout;
+}
+
+door::Panel make_notime(int mx, int my) {
+  door::ANSIColor yellowred =
+      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::RED, door::ATTR::BOLD);
+
+  std::string line_text("Sorry, you've used up all your time for today.");
+  int msgWidth = line_text.length() + (2 * 3); // + padding * 2
+  door::Panel timeout((mx - (msgWidth)) / 2, my / 2 + 4, msgWidth);
+  timeout.setStyle(door::BorderStyle::DOUBLE);
+  timeout.setColor(yellowred);
+
+  door::Line base(line_text);
+  base.setColor(yellowred);
+  std::string pad1(3, ' ');
+
+  /*
+      std::string pad1(3, '\xb0');
+      if (door::unicode) {
+        std::string unicode;
+        door::cp437toUnicode(pad1.c_str(), unicode);
+        pad1 = unicode;
+      }
+  */
+
+  base.setPadding(pad1, yellowred);
+  std::unique_ptr<door::Line> stuff = std::make_unique<door::Line>(base);
+  timeout.addLine(std::make_unique<door::Line>(base));
+  return timeout;
+}
+
+door::Menu make_main_menu(void) {
+  door::Menu m(5, 5, 25);
+  door::Line mtitle(SPACEACE " Main Menu");
+  door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
+  door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  m.setColor(border_color);
+  mtitle.setColor(title_color);
+  mtitle.setPadding(" ", title_color);
+
+  m.setTitle(std::make_unique<door::Line>(mtitle), 1);
+
+  // m.setColorizer(true,
+  m.setRender(true, door::Menu::makeRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD)));
+  // m.setColorizer(false,
+  m.setRender(false, door::Menu::makeRender(
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                                         door::ATTR::BOLD)));
+
+  m.addSelection('P', "Play Cards");
+  m.addSelection('S', "View Scores");
+  m.addSelection('C', "Configure");
+  m.addSelection('H', "Help");
+  m.addSelection('A', "About this game");
+  m.addSelection('Q', "Quit");
+
+  return m;
+}
+
+door::Menu make_config_menu(void) {
+  door::Menu m(5, 5, 31);
+  door::Line mtitle(SPACEACE " Configuration Menu");
+  door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
+  door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  m.setColor(border_color);
+  mtitle.setColor(title_color);
+  mtitle.setPadding(" ", title_color);
+
+  m.setTitle(std::make_unique<door::Line>(mtitle), 1);
+
+  // m.setColorizer(true,
+  m.setRender(true, door::Menu::makeRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD)));
+  // m.setColorizer(false,
+  m.setRender(false, door::Menu::makeRender(
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE,
+                                         door::ATTR::BOLD)));
+
+  m.addSelection('D', "Deck Colors");
+  m.addSelection('Q', "Quit");
+
+  return m;
+}
+
+/*
+// all the possible deck colors
+vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
+                                   std::string("Cyan"),    std::string("Green"),
+                                   std::string("Magenta"), std::string("Red")};
+*/
+
+door::Menu make_deck_menu(void) {
+  door::Menu m(5, 5, 31);
+  door::Line mtitle(SPACEACE " Deck Menu");
+  door::ANSIColor border_color(door::COLOR::CYAN, door::COLOR::BLUE);
+  door::ANSIColor title_color(door::COLOR::CYAN, door::COLOR::BLUE,
+                              door::ATTR::BOLD);
+  m.setColor(border_color);
+  mtitle.setColor(title_color);
+  mtitle.setPadding(" ", title_color);
+
+  m.setTitle(std::make_unique<door::Line>(mtitle), 1);
+
+  m.setRender(true, makeColorRender(
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
+                        door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD)));
+  m.setRender(false, makeColorRender(
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                         door::ATTR::BOLD),
+                         door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                         door::ATTR::BOLD)));
+  // build the menu options from the colors.  First character = single letter
+  // option trigger.
+  for (auto iter = deck_colors.begin(); iter != deck_colors.end(); ++iter) {
+    char c = (*iter)[0];
+    m.addSelection(c, (*iter).c_str());
+  }
+  /*
+  m.addSelection('A', "All");
+  m.addSelection('B', "Blue");
+  m.addSelection('C', "Cyan");
+  m.addSelection('G', "Green");
+  m.addSelection('M', "Magenta");
+  m.addSelection('R', "Red");
+  */
+
+  return m;
+}
