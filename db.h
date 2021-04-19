@@ -3,6 +3,7 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 
+#include <chrono>
 #include <map>
 #include <string>
 #include <vector>
@@ -47,12 +48,14 @@ public:
 
   std::vector<scores_details> getScoresOnDay(time_t date);
   std::map<time_t, std::vector<scores_data>> getScores(void);
+  std::map<time_t, int> getPlayed(void);
   void expireScores(void);
 
   int handsPlayedOnDay(time_t day);
   std::map<time_t, int> whenPlayed(void);
 };
 
+void normalizeDate(std::chrono::_V2::system_clock::time_point &date);
 void normalizeDate(time_t &tt, int hour = 2);
 std::string convertDateToDateScoreFormat(time_t tt);
 

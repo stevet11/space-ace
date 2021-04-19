@@ -7,6 +7,12 @@
 #include <iomanip> // put_time
 #include <sstream>
 
+/**
+ * @brief Allow any card to be played on any other card.
+ *
+ * This is for testing BONUS and scoring, etc.
+ *
+ */
 #define CHEATER "CHEAT_YOUR_ASS_OFF"
 
 // static std::function<std::ofstream &(void)> get_logger;
@@ -27,30 +33,31 @@ well as displaying a calendar to show what days are available to be played.
 For now, it will play today.
 */
 
-PlayCards::PlayCards(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
+PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
+    : door{d}, db{dbd}, rng{r} {
   get_logger = [this]() -> ofstream & { return door.log(); };
   init_values();
 
   play_day = std::chrono::system_clock::now();
+  normalizeDate(play_day);
+  time_t play_day_t = std::chrono::system_clock::to_time_t(play_day);
+  // check last_played
+  time_t last_played;
 
-  // adjustment
-  time_t time_play_day = std::chrono::system_clock::to_time_t(play_day);
-  /*
-  if (get_logger) {
-    get_logger() << "before: "
-                 << std::put_time(std::localtime(&time_play_day), "%F %R")
-                 << std::endl;
-  };
-  */
-  normalizeDate(time_play_day);
-  play_day = std::chrono::system_clock::from_time_t(time_play_day);
-  /*
-  if (get_logger) {
-    get_logger() << "after: "
-                 << std::put_time(std::localtime(&time_play_day), "%F %R")
-                 << std::endl;
-  };
-  */
+  {
+    std::string last_played_str = dbd.getSetting("last_played", "0");
+    last_played = std::stoi(last_played_str);
+    std::string days_played_str = dbd.getSetting("days_played", "0");
+    days_played = std::stoi(days_played_str);
+  }
+
+  if (last_played != play_day_t) {
+    // Ok, they haven't played today, so:
+    get_logger() << "reset days_played = 0" << std::endl;
+    dbd.setSetting("last_played", std::to_string(play_day_t));
+    dbd.setSetting("days_played", std::to_string(0));
+    days_played = 0;
+  }
 
   /*
    * TODO:  Check the date with the db.  Have they already played up today?  If
@@ -85,9 +92,11 @@ void PlayCards::init_values(void) {
   play_card = 28;
   current_streak = 0;
   best_streak = 0;
-  std::string best;
-  best = db.getSetting("best_streak", "0");
-  best_streak = std::stoi(best);
+  {
+    std::string best;
+    best = db.getSetting("best_streak", "0");
+    best_streak = std::stoi(best);
+  }
   select_card = 23;
   score = 0;
 }
@@ -100,13 +109,35 @@ void PlayCards::bonus(void) {
   door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD) << "BONUS";
 }
 
+/**
+ * @brief PLay
+ *
+ * This will display the calendar (if needed), otherwise takes player into
+ * play_cards using now() as play_day.
+ * \sa PlayCards::play_cards()
+ *
+ * @return int
+ */
+int PlayCards::play(void) {
+  hand = 1;
+  // possibly init_values()
+  play_day = std::chrono::system_clock::now();
+  normalizeDate(play_day);
+  return play_cards();
+}
+
+/**
+ * @brief play_cards
+ *
+ * Play cards for the given play_day and hand.
+ *
+ * This should be called by play with the correct #play_day set.
+ * \sa PlayCards::play()
+ *
+ * @return int
+ */
 int PlayCards::play_cards(void) {
   init_values();
-  std::string currentDefault = db.getSetting("DeckColor", "ALL");
-  get_logger() << "DeckColor shows as " << currentDefault << std::endl;
-  deck_color = stringToANSIColor(currentDefault);
-
-  dp = Deck(deck_color);
 
   // Calculate the game size
   int game_width;
@@ -131,6 +162,14 @@ int PlayCards::play_cards(void) {
   off_y += 3; // adjust for tripeaks panel
 
 next_hand:
+  // Make sure we pick the deck color here.  We want it to (possibly) change
+  // between hands.
+  std::string currentDefault = db.getSetting("DeckColor", "ALL");
+  get_logger() << "DeckColor shows as " << currentDefault << std::endl;
+  deck_color = stringToANSIColor(currentDefault);
+
+  dp = Deck(deck_color);
+
   play_card = 28;
   select_card = 23;
   score = 0;
@@ -541,7 +580,8 @@ next_hand:
 void PlayCards::redraw(bool dealing) {
   shared_panel c;
 
-  door << door::reset << door::cls;
+  display_starfield(door, rng);
+  // door << door::reset << door::cls;
   door << *spaceAceTriPeaks;
 
   {
@@ -688,6 +728,12 @@ door::renderFunction PlayCards::statusValue(door::ANSIColor status,
   return rf;
 }
 
+/**
+ * @brief make the score panel
+ * This displays: Name, Score, Time Used, Hands Played.
+ *
+ * @return std::unique_ptr<door::Panel>
+ */
 std::unique_ptr<door::Panel> PlayCards::make_score_panel() {
   const int W = 25;
   std::unique_ptr<door::Panel> p = std::make_unique<door::Panel>(W);

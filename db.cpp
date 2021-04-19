@@ -210,7 +210,7 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   try {
     SQLite::Statement stmt(
         db, "SELECT \"date\",\"username\",SUM(score),SUM(won) FROM scores "
-            "GROUP BY \"date\",username ORDER BY SUM(score) DESC;");
+            "GROUP BY \"date\",username ORDER BY \"date\",SUM(score) DESC;");
     time_t current = 0;
     std::vector<scores_data> vsd;
 
@@ -247,6 +247,36 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
     scores.clear();
   }
   return scores;
+}
+
+/**
+ * @brief Get hands played per day
+ *
+ * Uses the user value.
+ *
+ * @return std::map<time_t, int>
+ */
+std::map<time_t, int> DBData::getPlayed(void) {
+  std::map<time_t, int> hands;
+  try {
+    SQLite::Statement stmt(
+        // select date, count(hand) from scores where username='grinder' group
+        // by date;
+        db, "SELECT \"date\",COUNT(hand) FROM scores "
+            "WHERE username=? GROUP BY \"date\";");
+    stmt.bind(1, user);
+    while (stmt.executeStep()) {
+      time_t the_date = stmt.getColumn(0);
+      hands[the_date] = stmt.getColumn(1);
+    }
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "getPlayed(): " << user << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    hands.clear();
+  }
+  return hands;
 }
 
 /**
@@ -306,6 +336,12 @@ std::string convertDateToDateScoreFormat(time_t tt) {
 
   std::string date = ss.str();
   return date;
+}
+
+void normalizeDate(std::chrono::_V2::system_clock::time_point &date) {
+  time_t date_t = std::chrono::system_clock::to_time_t(date);
+  normalizeDate(date_t);
+  date = std::chrono::system_clock::from_time_t(date_t);
 }
 
 /**

@@ -150,4 +150,5 @@ door::Panel make_notime(int mx, int my);
 door::Menu make_main_menu(void);
 door::Menu make_config_menu(void);
 door::Menu make_deck_menu(void);
+
 #endif

@@ -12,6 +12,7 @@ class PlayCards {
 private:
   door::Door &door;
   DBData &db;
+  std::mt19937 &rng;
 
   std::unique_ptr<door::Panel> spaceAceTriPeaks;
   std::unique_ptr<door::Panel> score_panel;
@@ -34,6 +35,7 @@ private:
   int best_streak;
   int select_card; // the card the player selects, has state=1
   unsigned long score;
+  int days_played;
 
   Deck dp; // deckPanels
   int off_x, off_y;
@@ -48,11 +50,13 @@ private:
   void redraw(bool dealing);
   void bonus(void);
 
+  int play_cards(void);
+
 public:
-  PlayCards(door::Door &d, DBData &dbd);
+  PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r);
   ~PlayCards();
 
-  int play_cards(void);
+  int play(void);
   void init_values(void);
 
   door::renderFunction statusValue(door::ANSIColor status,
