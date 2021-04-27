@@ -27,6 +27,8 @@ class DBData {
   SQLite::Database db;
   void create_tables(void);
   std::string user;
+  int locked_retries;
+  
   /*
   I thought some of my performance problems were from the prepared statement
   calls.  It was not the case, there's a weird delay when I save/hit the

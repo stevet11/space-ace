@@ -3,11 +3,17 @@
 
 #include <SQLiteCpp/VariadicBind.h>
 
+#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 /*
+database is locked
+
+This happens when more then one node plays the game.
+
 The database access is slow.
 
 So, make sure you set it up so that you do your writes right
@@ -20,7 +26,7 @@ Change the strategy so we only update when the game ends.
 
 DBData::DBData(void)
     : db("space-data.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE) {
-
+  locked_retries = 5;
   create_tables();
   stmt_getSet = std::make_unique<SQLite::Statement>(
       db, "SELECT value FROM settings WHERE username=? AND setting=?");
@@ -30,10 +36,15 @@ DBData::DBData(void)
 
 DBData::~DBData() {}
 
+#define DBLOCK "database is locked"
+
 /**
  * @brief create tables if they don't exist.
  */
 void DBData::create_tables(void) {
+  int tries = locked_retries;
+
+retry:
   try {
     db.exec("CREATE TABLE IF NOT EXISTS \
 settings(username TEXT, setting TEXT, value TEXT, \
@@ -46,6 +57,16 @@ PRIMARY KEY(\"username\", \"date\", \"hand\"));");
     if (get_logger) {
       get_logger() << "create_tables():" << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
     }
   }
 }
@@ -62,6 +83,9 @@ PRIMARY KEY(\"username\", \"date\", \"hand\"));");
  */
 std::string DBData::getSetting(const std::string &setting,
                                std::string ifMissing) {
+  int tries = locked_retries;
+
+retry:
   try {
     stmt_getSet->reset();
     stmt_getSet->bind(1, user);
@@ -77,6 +101,16 @@ std::string DBData::getSetting(const std::string &setting,
                    << " ): " << user << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return ifMissing;
 }
@@ -91,6 +125,9 @@ std::string DBData::getSetting(const std::string &setting,
  * @param value
  */
 void DBData::setSetting(const std::string &setting, const std::string &value) {
+  int tries = locked_retries;
+
+retry:
   try {
     stmt_setSet->reset();
     stmt_setSet->bind(1, user);
@@ -102,6 +139,16 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
       get_logger() << "setSettings( " << setting << "," << value
                    << " ): " << user << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
     }
   }
 }
@@ -116,6 +163,9 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
  * @param score
  */
 void DBData::saveScore(time_t when, time_t date, int hand, int won, int score) {
+  int tries = locked_retries;
+
+retry:
   try {
     SQLite::Statement stmt(
         db, "INSERT INTO scores( \"username\", \"when\", "
@@ -133,6 +183,16 @@ void DBData::saveScore(time_t when, time_t date, int hand, int won, int score) {
                    << won << "," << score << " ): " << user << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
 }
 
@@ -144,6 +204,9 @@ void DBData::saveScore(time_t when, time_t date, int hand, int won, int score) {
  * @return int
  */
 int DBData::handsPlayedOnDay(time_t day) {
+  int tries = locked_retries;
+
+retry:
   try {
     SQLite::Statement stmt(
         db, "SELECT COUNT(*) FROM scores WHERE \"username\"=? AND \"DATE\"=?;");
@@ -160,6 +223,16 @@ int DBData::handsPlayedOnDay(time_t day) {
                    << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return 0;
 }
@@ -174,6 +247,9 @@ int DBData::handsPlayedOnDay(time_t day) {
 
 std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
   std::vector<scores_details> scores;
+  int tries = locked_retries;
+
+retry:
   try {
     // \"when\",
     SQLite::Statement stmt(db, "SELECT \"username\", \"date\", \"hand\", "
@@ -195,6 +271,16 @@ std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     scores.clear();
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return scores;
 }
@@ -207,6 +293,9 @@ std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
  */
 std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   std::map<time_t, std::vector<scores_data>> scores;
+  int tries = locked_retries;
+
+retry:
   try {
     SQLite::Statement stmt(
         db, "SELECT \"date\",\"username\",SUM(score),SUM(won) FROM scores "
@@ -245,6 +334,16 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     scores.clear();
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return scores;
 }
@@ -258,6 +357,9 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
  */
 std::map<time_t, int> DBData::getPlayed(void) {
   std::map<time_t, int> hands;
+  int tries = locked_retries;
+
+retry:
   try {
     SQLite::Statement stmt(
         // select date, count(hand) from scores where username='grinder' group
@@ -275,6 +377,16 @@ std::map<time_t, int> DBData::getPlayed(void) {
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     hands.clear();
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return hands;
 }
@@ -290,6 +402,9 @@ std::map<time_t, int> DBData::whenPlayed(void) {
   // select "date", count(hand) from scores where username='?' group by
   // "date";
   std::map<time_t, int> plays;
+  int tries = locked_retries;
+
+retry:
   try {
     SQLite::Statement stmt(db, "SELECT \"date\", COUNT(hand) FROM scores WHERE "
                                "username='?' GROUP BY \"date\";");
@@ -304,6 +419,16 @@ std::map<time_t, int> DBData::whenPlayed(void) {
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     plays.clear();
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      --tries;
+      if (tries > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
   }
   return plays;
 }
