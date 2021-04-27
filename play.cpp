@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "version.h"
 
+#include <ctime>
 #include <iomanip> // put_time
 #include <sstream>
 
@@ -71,6 +72,7 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
   left_panel = make_left_panel();
   cmd_panel = make_command_panel();
   next_quit_panel = make_next_panel();
+  calendar_panel = make_calendar_panel();
 
   /*
     int mx = door.width;
@@ -245,6 +247,14 @@ next_hand:
         r = std::toupper(r);
       switch (r) {
       case '\x0d':
+        if (current_streak > best_streak) {
+          best_streak = current_streak;
+          if (!config[CHEATER]) {
+            save_streak = true;
+          }
+          streak_panel->update(door);
+        }
+        
         if (play_card < 51) {
           play_card++;
           current_streak = 0;
@@ -274,6 +284,14 @@ next_hand:
         break;
       case 'Q':
         // possibly prompt here for [N]ext hand or [Q]uit ?
+        if (current_streak > best_streak) {
+          best_streak = current_streak;
+          if (!config[CHEATER]) {
+            save_streak = true;
+          }
+          streak_panel->update(door);        
+        }
+        
         next_quit_panel->update();
         door << *next_quit_panel;
 
@@ -334,12 +352,16 @@ next_hand:
           // if (true) {
           // yes we can.
           ++current_streak;
+
+          // update best_streak when they draw the next card.
+          /*
           if (current_streak > best_streak) {
             best_streak = current_streak;
             if (!config[CHEATER]) {
               save_streak = true;
             }
           }
+          */
           streak_panel->update(door);
           score += 10;
           if (current_streak > 1)
@@ -1031,4 +1053,136 @@ std::unique_ptr<door::Panel> PlayCards::make_tripeaks(void) {
   spaceAceTriPeaks->addLine(
       std::make_unique<door::Line>(tripeaksText, tripeaksText.size()));
   return spaceAceTriPeaks;
+}
+
+/**
+ * @brief make calendar
+ * We assume the calendar is for this month now()
+ * Jaunary
+ * February
+ * March
+ * April
+ * May
+ * June
+ * July
+ * August
+ * September
+ * October
+ * November
+ * December
+ * 123456789012345678901234567890123456789012345678901234567890
+ *    ▒▒░▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀░▒▒
+ * N  ▒▒▌SUN MON TUE WED THU FRI SAT▐▒▒
+ * O  ▒▒░───▄───▄───▄───▄───▄───▄───░▒▒
+ * V  ▒▒▌ 1x│ 2x│ 3o│ 4o│ 5o│ 6o│ 7o▐▒▒  X = Day Completed
+ * E  ▒▒▌ 8o│ 9x│10o│11o│12x│13x│14o▐▒▒  O = Day Playable
+ * M  ▒▒▌15x│16u│17u│18u│19u│20u│21u▐▒▒  U = Day Unavailable
+ * B  ▒▒▌22u│23u│24u│25u│26u│27u│28u▐▒▒  H = Day Uncompleted
+ * E  ▒▒▌29u│30u│   │   │   │   │   ▐▒▒
+ * R  ▒▒▌   │   │   │   │   │   │   ▐▒▒
+ *    ▒▒░▄▄▄█▄▄▄█▄▄▄█▄▄▄█▄▄▄█▄▄▄█▄▄▄░▒▒
+ *
+ * 123456789012345678901234567890123456789012345678901234567890123456789012345
+ *
+ *    ▒▒░▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀░▒▒
+ * N  ▒▒▌ SUN   MON   TUE   WED   THU   FRI   SAT ▐▒▒
+ * O  ▒▒░─────▄─────▄─────▄─────▄─────▄─────▄─────░▒▒
+ * V  ▒▒▌  1x │  2x │  3o │  4o │  5o │  6o │  7o ▐▒▒  X = Day Completed
+ * E  ▒▒▌  8o │  9x │ 10o │ 11o │ 12x │ 13x │ 14o ▐▒▒  O = Day Playable
+ * M  ▒▒▌ 15x │ 16u │ 17u │ 18u │ 19u │ 20u │ 21u ▐▒▒  U = Day Unavailable
+ * B  ▒▒▌ 22u │ 23u │ 24u │ 25u │ 26u │ 27u │ 28u ▐▒▒  H = Day Uncompleted
+ * E  ▒▒▌ 29u │ 30u │     │     │     │     │     ▐▒▒
+ * R  ▒▒▌     │     │     │     │     │     │     ▐▒▒
+ *    ▒▒░▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄░▒▒
+ *              X Extra Days Allowed Per Day
+ *
+ * @return std::unique_ptr<door::Panel>
+ */
+std::unique_ptr<door::Panel> PlayCards::make_calendar_panel() {
+  const int W = 72;
+  std::unique_ptr<door::Panel> p = std::make_unique<door::Panel>(W);
+  p->setStyle(door::BorderStyle::NONE);
+
+  auto month = std::chrono::system_clock::now();
+  time_t month_t = std::chrono::system_clock::to_time_t(month);
+  // adjust to first day of the month
+  std::tm *month_lt = localtime(&month_t);
+  if (month_lt->tm_mday > 1) {
+    month -= 24h * (month_lt->tm_mday - 1);
+  }
+  normalizeDate(month);
+  month_t = std::chrono::system_clock::to_time_t(month);
+  get_logger() << "Month is "
+               << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
+
+  // Ok, that is working.  I'm getting the first day of the month.  So...
+
+  /*
+  store the time_t for the date.
+  store the day in the column it needs to be in.
+  store any hands played (pull data from the db).
+
+  seems like this should be its own class, there's a lot of data that is
+  specific just to it.
+  */
+
+  /*
+    door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
+                                door::ATTR::BOLD);
+    door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                               door::ATTR::BOLD);
+    door::renderFunction svRender = statusValue(statusColor, valueColor);
+    // or use renderStatus as defined above.
+    // We'll stick with these for now.
+
+    {
+      std::string userString = "Name: ";
+      userString += door.username;
+      door::Line username(userString, W);
+      username.setRender(svRender);
+      p->addLine(std::make_unique<door::Line>(username));
+    }
+    {
+      door::updateFunction scoreUpdate = [this](void) -> std::string {
+        std::string text = "Score: ";
+        text.append(std::to_string(score));
+        return text;
+      };
+      std::string scoreString = scoreUpdate();
+      door::Line scoreline(scoreString, W);
+      scoreline.setRender(svRender);
+      scoreline.setUpdater(scoreUpdate);
+      p->addLine(std::make_unique<door::Line>(scoreline));
+    }
+    {
+      door::updateFunction timeUpdate = [this](void) -> std::string {
+        std::stringstream ss;
+        std::string text;
+        ss << "Time used: " << setw(3) << door.time_used << " / " << setw(3)
+           << door.time_left;
+        text = ss.str();
+        return text;
+      };
+      std::string timeString = timeUpdate();
+      door::Line time(timeString, W);
+      time.setRender(svRender);
+      time.setUpdater(timeUpdate);
+      p->addLine(std::make_unique<door::Line>(time));
+    }
+    {
+      door::updateFunction handUpdate = [this](void) -> std::string {
+        std::string text = "Playing Hand ";
+        text.append(std::to_string(hand));
+        text.append(" of ");
+        text.append(std::to_string(total_hands));
+        return text;
+      };
+      std::string handString = handUpdate();
+      door::Line hands(handString, W);
+      hands.setRender(svRender);
+      hands.setUpdater(handUpdate);
+      p->addLine(std::make_unique<door::Line>(hands));
+    }
+  */
+  return p;
 }

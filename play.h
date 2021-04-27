@@ -20,6 +20,7 @@ private:
   std::unique_ptr<door::Panel> left_panel;
   std::unique_ptr<door::Panel> cmd_panel;
   std::unique_ptr<door::Panel> next_quit_panel;
+  std::unique_ptr<door::Panel> calendar_panel;
 
   std::unique_ptr<door::Panel> make_score_panel();
   std::unique_ptr<door::Panel> make_tripeaks(void);
@@ -27,6 +28,7 @@ private:
   std::unique_ptr<door::Panel> make_streak_panel(void);
   std::unique_ptr<door::Panel> make_left_panel(void);
   std::unique_ptr<door::Panel> make_next_panel(void);
+  std::unique_ptr<door::Panel> make_calendar_panel(void);
 
   int hand;
   int total_hands;
