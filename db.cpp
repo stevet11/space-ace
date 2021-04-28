@@ -26,15 +26,15 @@ Change the strategy so we only update when the game ends.
 
 DBData::DBData(void)
     : db("space-data.db", SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE) {
-  locked_retries = 5;
+  locked_retries = 50;
   create_tables();
-  stmt_getSet = std::make_unique<SQLite::Statement>(
-      db, "SELECT value FROM settings WHERE username=? AND setting=?");
-  stmt_setSet = std::make_unique<SQLite::Statement>(
-      db, "REPLACE INTO settings(username, setting, value) VALUES(?,?,?);");
 }
 
 DBData::~DBData() {}
+
+void DBData::retry_wait(void) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
 
 #define DBLOCK "database is locked"
 
@@ -42,7 +42,7 @@ DBData::~DBData() {}
  * @brief create tables if they don't exist.
  */
 void DBData::create_tables(void) {
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -59,15 +59,18 @@ PRIMARY KEY(\"username\", \"date\", \"hand\"));");
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
+  }
+  if (tries > 0) {
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   }
 }
 
@@ -83,15 +86,17 @@ PRIMARY KEY(\"username\", \"date\", \"hand\"));");
  */
 std::string DBData::getSetting(const std::string &setting,
                                std::string ifMissing) {
-  int tries = locked_retries;
+  SQLite::Statement stmt_getSet = SQLite::Statement(
+      db, "SELECT value FROM settings WHERE username=? AND setting=?");
+  int tries = 0;
 
 retry:
   try {
-    stmt_getSet->reset();
-    stmt_getSet->bind(1, user);
-    stmt_getSet->bind(2, setting);
-    if (stmt_getSet->executeStep()) {
-      std::string value = stmt_getSet->getColumn(0);
+
+    stmt_getSet.bind(1, user);
+    stmt_getSet.bind(2, setting);
+    if (stmt_getSet.executeStep()) {
+      std::string value = stmt_getSet.getColumn(0);
       return value;
     };
     return ifMissing;
@@ -102,16 +107,20 @@ retry:
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0) {
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
+  }
+
   return ifMissing;
 }
 
@@ -125,15 +134,17 @@ retry:
  * @param value
  */
 void DBData::setSetting(const std::string &setting, const std::string &value) {
-  int tries = locked_retries;
+  SQLite::Statement stmt_setSet = SQLite::Statement(
+      db, "REPLACE INTO settings(username, setting, value) VALUES(?,?,?);");
+  int tries = 0;
 
 retry:
   try {
-    stmt_setSet->reset();
-    stmt_setSet->bind(1, user);
-    stmt_setSet->bind(2, setting);
-    stmt_setSet->bind(3, value);
-    stmt_setSet->exec();
+
+    stmt_setSet.bind(1, user);
+    stmt_setSet.bind(2, setting);
+    stmt_setSet.bind(3, value);
+    stmt_setSet.exec();
   } catch (std::exception &e) {
     if (get_logger) {
       get_logger() << "setSettings( " << setting << "," << value
@@ -141,16 +152,18 @@ retry:
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
 }
 
 /**
@@ -163,7 +176,7 @@ retry:
  * @param score
  */
 void DBData::saveScore(time_t when, time_t date, int hand, int won, int score) {
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -184,16 +197,18 @@ retry:
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
 }
 
 /**
@@ -204,7 +219,7 @@ retry:
  * @return int
  */
 int DBData::handsPlayedOnDay(time_t day) {
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -224,16 +239,18 @@ retry:
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   return 0;
 }
 
@@ -247,7 +264,7 @@ retry:
 
 std::vector<scores_details> DBData::getScoresOnDay(time_t date) {
   std::vector<scores_details> scores;
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -272,16 +289,18 @@ retry:
     }
     scores.clear();
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   return scores;
 }
 
@@ -293,7 +312,7 @@ retry:
  */
 std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
   std::map<time_t, std::vector<scores_data>> scores;
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -335,9 +354,9 @@ retry:
     }
     scores.clear();
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
@@ -345,6 +364,9 @@ retry:
                      << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   return scores;
 }
 
@@ -357,7 +379,7 @@ retry:
  */
 std::map<time_t, int> DBData::getPlayed(void) {
   std::map<time_t, int> hands;
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -378,16 +400,18 @@ retry:
     }
     hands.clear();
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   return hands;
 }
 
@@ -402,7 +426,7 @@ std::map<time_t, int> DBData::whenPlayed(void) {
   // select "date", count(hand) from scores where username='?' group by
   // "date";
   std::map<time_t, int> plays;
-  int tries = locked_retries;
+  int tries = 0;
 
 retry:
   try {
@@ -420,16 +444,18 @@ retry:
     }
     plays.clear();
     if (strcmp(e.what(), DBLOCK) == 0) {
-      --tries;
-      if (tries > 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
         goto retry;
       }
       if (get_logger)
-        get_logger() << "giving up! " << locked_retries << " retries."
-                     << std::endl;
+        get_logger() << "giving up! " << tries << " retries." << std::endl;
     }
   }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
   return plays;
 }
 
