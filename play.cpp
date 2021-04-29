@@ -72,7 +72,7 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
   left_panel = make_left_panel();
   cmd_panel = make_command_panel();
   next_quit_panel = make_next_panel();
-  calendar_panel = make_calendar_panel();
+  calendar = make_calendar();
 
   /*
     int mx = door.width;
@@ -111,6 +111,13 @@ void PlayCards::bonus(void) {
   door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD) << "BONUS";
 }
 
+int PlayCards::press_a_key(void) {
+  door << door::reset << "Press a key to continue...";
+  int r = door.sleep_key(door.inactivity);
+  door << door::nl;
+  return r;
+}
+
 /**
  * @brief PLay
  *
@@ -121,8 +128,18 @@ void PlayCards::bonus(void) {
  * @return int
  */
 int PlayCards::play(void) {
+  play_day = std::chrono::system_clock::now();
+  normalizeDate(play_day);
+
+  // check to see if played already today
+  std::shared_ptr<door::Screen> calendar = make_calendar();
+  door << door::reset << door::cls;
+  door << *calendar;
+  press_a_key();
+
   hand = 1;
   // possibly init_values()
+
   play_day = std::chrono::system_clock::now();
   normalizeDate(play_day);
   return play_cards();
@@ -254,7 +271,7 @@ next_hand:
           }
           streak_panel->update(door);
         }
-        
+
         if (play_card < 51) {
           play_card++;
           current_streak = 0;
@@ -289,9 +306,9 @@ next_hand:
           if (!config[CHEATER]) {
             save_streak = true;
           }
-          streak_panel->update(door);        
+          streak_panel->update(door);
         }
-        
+
         next_quit_panel->update();
         door << *next_quit_panel;
 
@@ -1055,6 +1072,36 @@ std::unique_ptr<door::Panel> PlayCards::make_tripeaks(void) {
   return spaceAceTriPeaks;
 }
 
+std::shared_ptr<door::Panel> PlayCards::make_month(std::string month) {
+  const int W = 3;
+  std::shared_ptr<door::Panel> p = make_shared<door::Panel>(W);
+  door::ANSIColor panelColor(door::COLOR::YELLOW, door::COLOR::BLACK,
+                             door::ATTR::BOLD);
+  p->setStyle(door::BorderStyle::DOUBLE);
+  p->setColor(panelColor);
+  for (auto c : month) {
+    std::string text = " ";
+    text += c;
+    text += " ";
+    door::Line line(text);
+    p->addLine(std::make_unique<door::Line>(line));
+  }
+  return p;
+}
+
+std::shared_ptr<door::Panel> PlayCards::make_weekdays() {
+  const int W = 41;
+  std::string text = " SUN   MON   TUE   WED   THU   FRI   SAT ";
+  std::shared_ptr<door::Panel> p = make_shared<door::Panel>(W);
+  door::ANSIColor panelColor(door::COLOR::CYAN, door::COLOR::BLACK,
+                             door::ATTR::BOLD);
+  p->setStyle(door::BorderStyle::DOUBLE);
+  p->setColor(panelColor);
+  door::Line line(text);
+  p->addLine(std::make_unique<door::Line>(line));
+  return p;
+}
+
 /**
  * @brief make calendar
  * We assume the calendar is for this month now()
@@ -1096,12 +1143,33 @@ std::unique_ptr<door::Panel> PlayCards::make_tripeaks(void) {
  *    ▒▒░▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄█▄▄▄▄▄░▒▒
  *              X Extra Days Allowed Per Day
  *
+ * 123456789012345678901234567890123456789012345678901234567890123456789012345
+ *  ╔═══╗  ╔═════════════════════════════════════════╗
+ *  ║ N ║  ║ SUN   MON   TUE   WED   THU   FRI   SAT ║
+ *  ║ O ║  ╚═════════════════════════════════════════╝
+ *  ║ V ║  ╔═════════════════════════════════════════╗
+ *  ║ E ║  ║  1x    2x    3o    4o    5o    6o    7o ║
+ *  ║ M ║  ║  8x    9x   10o   11o   12o   13o   14o ║
+ *  ║ B ║  ║ 15h   16h   17h   18h   19u   20u   21u ║
+ *  ║ E ║  ║ 22u   23u   24u   25u   26u   27u   28u ║
+ *  ║ R ║  ║ 29u   30u   31u                         ║
+ *  ╚═══╝  ║                                         ║
+ *         ╚═════════════════════════════════════════╝
+ *
+ *
+ *
+ *
  * @return std::unique_ptr<door::Panel>
  */
-std::unique_ptr<door::Panel> PlayCards::make_calendar_panel() {
-  const int W = 72;
-  std::unique_ptr<door::Panel> p = std::make_unique<door::Panel>(W);
-  p->setStyle(door::BorderStyle::NONE);
+
+/**
+ * make_calendar
+ *
+ * This needs the screen size information so it can place the
+ * panels in the correct location.
+ */
+std::unique_ptr<door::Screen> PlayCards::make_calendar() {
+  std::unique_ptr<door::Screen> s = std::make_unique<door::Screen>();
 
   auto month = std::chrono::system_clock::now();
   time_t month_t = std::chrono::system_clock::to_time_t(month);
@@ -1115,9 +1183,20 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel() {
   get_logger() << "Month is "
                << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
 
-  // Ok, that is working.  I'm getting the first day of the month.  So...
+  std::shared_ptr<door::Panel> p = make_month("DECEMBER");
+  p->set(3, 3);
+  s->addPanel(p);
+  p = make_weekdays();
+  p->set(8, 3);
+  s->addPanel(p);
 
   /*
+  const int W = 72;
+  p->setStyle(door::BorderStyle::NONE);
+
+  // Ok, that is working.  I'm getting the first day of the month.  So...
+
+
   store the time_t for the date.
   store the day in the column it needs to be in.
   store any hands played (pull data from the db).
@@ -1184,5 +1263,5 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel() {
       p->addLine(std::make_unique<door::Line>(hands));
     }
   */
-  return p;
+  return s;
 }
