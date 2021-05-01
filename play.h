@@ -14,6 +14,18 @@ private:
   DBData &db;
   std::mt19937 &rng;
 
+  int month_last_day;
+  /**
+   * These map to the positions on the screen that displays the calendar.  This
+   * allows me to update the days string. Sun - Sat, 6 lines. (7*6)
+   */
+  std::array<int, 7 * 6> calendar_panel_days;
+  /**
+   * This maps a day to: 0 (available), 1 (has hands left to play), 2 (played),
+   * 3 (NNY)
+   */
+  std::array<int, 31> calendar_day_status;
+
   std::unique_ptr<door::Panel> spaceAceTriPeaks;
   std::unique_ptr<door::Panel> score_panel;
   std::unique_ptr<door::Panel> streak_panel;
@@ -29,10 +41,11 @@ private:
   std::unique_ptr<door::Panel> make_left_panel(void);
   std::unique_ptr<door::Panel> make_next_panel(void);
 
-  std::shared_ptr<door::Panel> make_weekdays(void);
-  std::shared_ptr<door::Panel> make_month(std::string month);
+  std::unique_ptr<door::Panel> make_weekdays(void);
+  std::unique_ptr<door::Panel> make_month(std::string month);
   std::unique_ptr<door::Screen> make_calendar(void);
 
+  std::string current_month(std::chrono::_V2::system_clock::time_point now);
   int press_a_key(void);
 
   int hand;

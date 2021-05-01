@@ -132,10 +132,11 @@ int PlayCards::play(void) {
   normalizeDate(play_day);
 
   // check to see if played already today
-  std::shared_ptr<door::Screen> calendar = make_calendar();
+  std::unique_ptr<door::Screen> calendar = make_calendar();
   door << door::reset << door::cls;
   door << *calendar;
   press_a_key();
+  return 0;
 
   hand = 1;
   // possibly init_values()
@@ -1072,9 +1073,9 @@ std::unique_ptr<door::Panel> PlayCards::make_tripeaks(void) {
   return spaceAceTriPeaks;
 }
 
-std::shared_ptr<door::Panel> PlayCards::make_month(std::string month) {
+std::unique_ptr<door::Panel> PlayCards::make_month(std::string month) {
   const int W = 3;
-  std::shared_ptr<door::Panel> p = make_shared<door::Panel>(W);
+  std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
   door::ANSIColor panelColor(door::COLOR::YELLOW, door::COLOR::BLACK,
                              door::ATTR::BOLD);
   p->setStyle(door::BorderStyle::DOUBLE);
@@ -1089,10 +1090,10 @@ std::shared_ptr<door::Panel> PlayCards::make_month(std::string month) {
   return p;
 }
 
-std::shared_ptr<door::Panel> PlayCards::make_weekdays() {
+std::unique_ptr<door::Panel> PlayCards::make_weekdays() {
   const int W = 41;
   std::string text = " SUN   MON   TUE   WED   THU   FRI   SAT ";
-  std::shared_ptr<door::Panel> p = make_shared<door::Panel>(W);
+  std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
   door::ANSIColor panelColor(door::COLOR::CYAN, door::COLOR::BLACK,
                              door::ATTR::BOLD);
   p->setStyle(door::BorderStyle::DOUBLE);
@@ -1162,6 +1163,18 @@ std::shared_ptr<door::Panel> PlayCards::make_weekdays() {
  * @return std::unique_ptr<door::Panel>
  */
 
+std::string
+PlayCards::current_month(std::chrono::_V2::system_clock::time_point now) {
+  time_t now_t = std::chrono::system_clock::to_time_t(now);
+  std::tm *now_tm = localtime(&now_t);
+
+  ostringstream os;
+  std::string text;
+  os << std::put_time(now_tm, "%B");
+  text = os.str();
+  return text;
+}
+
 /**
  * make_calendar
  *
@@ -1180,15 +1193,62 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   }
   normalizeDate(month);
   month_t = std::chrono::system_clock::to_time_t(month);
-  get_logger() << "Month is "
+  get_logger() << "1st of Month is "
                << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
+  month_lt = localtime(&month_t);
+  const int FIRST_WEEKDAY = month_lt->tm_wday; // 0-6
 
-  std::shared_ptr<door::Panel> p = make_month("DECEMBER");
+  get_logger() << "1st of the Month starts on " << FIRST_WEEKDAY << std::endl;
+
+  // find the last day of this month.
+  time_t month_last_day_t = month_t;
+  std::tm *mld_tm = localtime(&month_last_day_t);
+  // increment the month, if > 11 (we've entered a new year)
+  mld_tm->tm_mon += 1;
+  if (mld_tm->tm_mon > 11) {
+    mld_tm->tm_mon = 0;
+    mld_tm->tm_year++;
+  }
+  month_last_day_t = std::mktime(mld_tm);
+  // Ok, this should be the 1st of next month.
+  month_last_day_t -= (60 * 60 * 24);
+  mld_tm = localtime(&month_last_day_t);
+  month_last_day = mld_tm->tm_mday;
+  get_logger() << "Last day is " << month_last_day << std::endl;
+
+  calendar_panel_days.fill(0);
+  int row = 0;
+  for (int x = 0; x < month_last_day; x++) {
+    int dow = (x + FIRST_WEEKDAY) % 7;
+    if ((x != 0) and (dow == 0))
+      row++;
+    get_logger() << "x = " << x << " dow = " << dow << " row = " << row
+                 << std::endl;
+
+    // we actually want x+1 (1- month_last_day)
+    get_logger() << row * 7 + dow << " = " << x + 1 << std::endl;
+    calendar_panel_days[row * 7 + dow] = x + 1;
+  }
+
+  {
+    ofstream &of = get_logger();
+    of << "Calendar_panel_days:" << std::endl;
+
+    for (int x = 0; x < (int)calendar_panel_days.size(); ++x) {
+      of << calendar_panel_days[x] << " ";
+      if ((x != 0) and (((x + 1) % 7) == 0)) {
+        of << std::endl;
+      }
+    }
+    of << std::endl;
+  }
+
+  std::unique_ptr<door::Panel> p = make_month(current_month(month));
   p->set(3, 3);
-  s->addPanel(p);
+  s->addPanel(std::move(p));
   p = make_weekdays();
   p->set(8, 3);
-  s->addPanel(p);
+  s->addPanel(std::move(p));
 
   /*
   const int W = 72;
