@@ -140,7 +140,6 @@ void DBData::setSetting(const std::string &setting, const std::string &value) {
 
 retry:
   try {
-
     stmt_setSet.bind(1, user);
     stmt_setSet.bind(2, setting);
     stmt_setSet.bind(3, value);
@@ -317,8 +316,8 @@ std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
 retry:
   try {
     SQLite::Statement stmt(
-        db, "SELECT \"date\",\"username\",SUM(score),SUM(won) FROM scores "
-            "GROUP BY \"date\",username ORDER BY \"date\",SUM(score) DESC;");
+        db, "SELECT `date`,username,SUM(score),SUM(won) FROM scores "
+            "GROUP BY `date`,username ORDER BY `date`,SUM(score) DESC;");
     time_t current = 0;
     std::vector<scores_data> vsd;
 
@@ -386,8 +385,8 @@ retry:
     SQLite::Statement stmt(
         // select date, count(hand) from scores where username='grinder' group
         // by date;
-        db, "SELECT \"date\",COUNT(hand) FROM scores "
-            "WHERE username=? GROUP BY \"date\";");
+        db, "SELECT `date`,COUNT(hand) FROM scores "
+            "WHERE username=? GROUP BY `date`;");
     stmt.bind(1, user);
     while (stmt.executeStep()) {
       time_t the_date = stmt.getColumn(0);
@@ -420,7 +419,7 @@ retry:
  *
  * This returns a map of date (time_t), and number of hands played on that date.
  *
- * @return std::map<time_t, int>
+ * @return std::map<time_t, long>
  */
 std::map<time_t, int> DBData::whenPlayed(void) {
   // select "date", count(hand) from scores where username='?' group by
@@ -430,12 +429,13 @@ std::map<time_t, int> DBData::whenPlayed(void) {
 
 retry:
   try {
-    SQLite::Statement stmt(db, "SELECT \"date\", COUNT(hand) FROM scores WHERE "
-                               "username='?' GROUP BY \"date\";");
+    SQLite::Statement stmt(db, "SELECT `date`, COUNT(hand) FROM scores WHERE "
+                               "username=? GROUP BY `date`;");
     stmt.bind(1, user);
 
     while (stmt.executeStep()) {
-      plays[stmt.getColumn(0)] = stmt.getColumn(1);
+      time_t d = (long)stmt.getColumn(0);
+      plays[d] = stmt.getColumn(1);
     }
   } catch (std::exception &e) {
     if (get_logger) {

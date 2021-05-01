@@ -34,12 +34,14 @@ class DBData {
   calls.  It was not the case, there's a weird delay when I save/hit the
   database.  This didn't fix it, but they are still present.
   Prepared statements, prepared ahead of time, are a good thing.
-   
+
+  Unless, they lock the entire database.
+
   std::unique_ptr<SQLite::Statement> stmt_getSet;
   std::unique_ptr<SQLite::Statement> stmt_setSet;
   */
   void retry_wait(void);
-  
+
 public:
   DBData();
   virtual ~DBData();
