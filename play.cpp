@@ -1187,47 +1187,68 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   auto month = std::chrono::system_clock::now();
   time_t month_t = std::chrono::system_clock::to_time_t(month);
   // adjust to first day of the month
-  std::tm *month_lt = localtime(&month_t);
-  if (month_lt->tm_mday > 1) {
-    month -= 24h * (month_lt->tm_mday - 1);
+  std::tm month_lt;
+  localtime_r(&month_t, &month_lt);
+  if (month_lt.tm_mday > 1) {
+    month -= 24h * (month_lt.tm_mday - 1);
   }
   normalizeDate(month);
   month_t = std::chrono::system_clock::to_time_t(month);
   get_logger() << "1st of Month is "
                << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
-  month_lt = localtime(&month_t);
-  const int FIRST_WEEKDAY = month_lt->tm_wday; // 0-6
+  localtime_r(&month_t, &month_lt);
+  const int FIRST_WEEKDAY = month_lt.tm_wday; // 0-6
 
   get_logger() << "1st of the Month starts on " << FIRST_WEEKDAY << std::endl;
 
   // find the last day of this month.
   time_t month_last_day_t = month_t;
-  std::tm *mld_tm = localtime(&month_last_day_t);
+  std::tm mld_tm;
+  localtime_r(&month_last_day_t, &mld_tm);
   // increment the month, if > 11 (we've entered a new year)
-  mld_tm->tm_mon += 1;
-  if (mld_tm->tm_mon > 11) {
-    mld_tm->tm_mon = 0;
-    mld_tm->tm_year++;
+  mld_tm.tm_mon += 1;
+  if (mld_tm.tm_mon > 11) {
+    mld_tm.tm_mon = 0;
+    mld_tm.tm_year++;
   }
-  month_last_day_t = std::mktime(mld_tm);
+  month_last_day_t = std::mktime(&mld_tm);
   // Ok, this should be the 1st of next month.
   month_last_day_t -= (60 * 60 * 24);
-  mld_tm = localtime(&month_last_day_t);
-  month_last_day = mld_tm->tm_mday;
+  localtime_r(&month_last_day_t, &mld_tm);
+  month_last_day = mld_tm.tm_mday;
   get_logger() << "Last day is " << month_last_day << std::endl;
 
   calendar_panel_days.fill(0);
+
   int row = 0;
   for (int x = 0; x < month_last_day; x++) {
     int dow = (x + FIRST_WEEKDAY) % 7;
     if ((x != 0) and (dow == 0))
       row++;
+    /*
     get_logger() << "x = " << x << " dow = " << dow << " row = " << row
-                 << std::endl;
-
+               << std::endl;
+    */
     // we actually want x+1 (1- month_last_day)
-    get_logger() << row * 7 + dow << " = " << x + 1 << std::endl;
+    // get_logger() << row * 7 + dow << " = " << x + 1 << std::endl;
     calendar_panel_days[row * 7 + dow] = x + 1;
+  }
+
+  calendar_day_status.fill(0);
+  auto last_played = db.whenPlayed();
+
+  // until maint is setup, we need to verify that the month and year is correct.
+  for (auto played : last_played) {
+    get_logger() << "played " << played.first << " hands: " << played.second
+                 << std::endl;
+    time_t play_t = played.first;
+    std::tm played_tm;
+    localtime_r(&play_t, &played_tm);
+    if (get_logger) {
+      get_logger() << played_tm.tm_mon + 1 << "/" << played_tm.tm_mday << "/"
+                   << played_tm.tm_year + 1900 << " : " << played.second << " "
+                   << play_t << std::endl;
+    }
   }
 
   {
@@ -1235,7 +1256,7 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     of << "Calendar_panel_days:" << std::endl;
 
     for (int x = 0; x < (int)calendar_panel_days.size(); ++x) {
-      of << calendar_panel_days[x] << " ";
+      of << std::setw(2) << calendar_panel_days[x] << " ";
       if ((x != 0) and (((x + 1) % 7) == 0)) {
         of << std::endl;
       }
