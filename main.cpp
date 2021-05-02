@@ -376,6 +376,11 @@ int main(int argc, char *argv[]) {
     update_config = true;
   }
 
+  if (!config["play_days_ahead"]) {
+    config["play_days_ahead"] = 2;
+    update_config = true;
+  }
+
   /*
     if (config["hands_per_day"]) {
       get_logger() << "hands_per_day: " << config["hands_per_day"].as<int>()

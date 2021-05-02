@@ -43,6 +43,7 @@ private:
 
   std::unique_ptr<door::Panel> make_weekdays(void);
   std::unique_ptr<door::Panel> make_month(std::string month);
+  std::unique_ptr<door::Panel> make_calendar_panel(void);
   std::unique_ptr<door::Screen> make_calendar(void);
 
   std::string current_month(std::chrono::_V2::system_clock::time_point now);

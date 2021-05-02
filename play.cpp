@@ -136,7 +136,7 @@ int PlayCards::play(void) {
   door << door::reset << door::cls;
   door << *calendar;
   press_a_key();
-  return 0;
+  // return 0;
 
   hand = 1;
   // possibly init_values()
@@ -1090,7 +1090,7 @@ std::unique_ptr<door::Panel> PlayCards::make_month(std::string month) {
   return p;
 }
 
-std::unique_ptr<door::Panel> PlayCards::make_weekdays() {
+std::unique_ptr<door::Panel> PlayCards::make_weekdays(void) {
   const int W = 41;
   std::string text = " SUN   MON   TUE   WED   THU   FRI   SAT ";
   std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
@@ -1100,6 +1100,61 @@ std::unique_ptr<door::Panel> PlayCards::make_weekdays() {
   p->setColor(panelColor);
   door::Line line(text);
   p->addLine(std::make_unique<door::Line>(line));
+  return p;
+}
+
+std::unique_ptr<door::Panel> PlayCards::make_calendar_panel(void) {
+  const int W = 41;
+  std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
+  p->setStyle(door::BorderStyle::DOUBLE);
+  std::string text;
+  int row;
+
+  for (row = 0; row < 6; ++row) {
+    door::updateFunction calendarUpdate = [this, row]() -> std::string {
+      std::string text;
+
+      for (int d = 0; d < 7; ++d) {
+        text += " ";
+        int v = this->calendar_panel_days[(row * 7) + d];
+        if (v == 0)
+          text += "   ";
+        else {
+          std::string number = std::to_string(v);
+          if (number.length() == 1)
+            text += " ";
+          text += number;
+          // Now, translate the status
+          int status = this->calendar_day_status[v - 1];
+          switch (status) {
+          case 0:
+            text += "o";
+            break;
+          case 1:
+            text += "h";
+            break;
+          case 2:
+            text += "x";
+            break;
+          case 3:
+            text += "u";
+            break;
+          }
+        }
+        if (d == 6)
+          text += " ";
+        else
+          text += "  ";
+      }
+      return text;
+    };
+
+    text = calendarUpdate();
+    door::Line line(text);
+    line.setUpdater(calendarUpdate);
+    p->addLine(std::make_unique<door::Line>(line));
+  }
+
   return p;
 }
 
@@ -1184,11 +1239,23 @@ PlayCards::current_month(std::chrono::_V2::system_clock::time_point now) {
 std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   std::unique_ptr<door::Screen> s = std::make_unique<door::Screen>();
 
+  /*
+   * This has potential of jumping ahead if player is on after midnight.
+   * I'd rather this be stable.  When they start the game, is where
+   * we count things.  (Also last day of month + midnight -- means
+   * we need maint ran!  No!)
+   */
+
   auto month = std::chrono::system_clock::now();
   time_t month_t = std::chrono::system_clock::to_time_t(month);
   // adjust to first day of the month
   std::tm month_lt;
   localtime_r(&month_t, &month_lt);
+
+  int this_month = month_lt.tm_mon;
+  int this_day = month_lt.tm_mday;
+  int this_year = month_lt.tm_year + 1900;
+
   if (month_lt.tm_mday > 1) {
     month -= 24h * (month_lt.tm_mday - 1);
   }
@@ -1236,6 +1303,11 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
 
   calendar_day_status.fill(0);
   auto last_played = db.whenPlayed();
+  int play_days_ahead = 0;
+
+  if (config["play_days_ahead"]) {
+    play_days_ahead = config["play_days_ahead"].as<int>();
+  }
 
   // until maint is setup, we need to verify that the month and year is correct.
   for (auto played : last_played) {
@@ -1249,6 +1321,30 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
                    << played_tm.tm_year + 1900 << " : " << played.second << " "
                    << play_t << std::endl;
     }
+    if ((played_tm.tm_mon == this_month) &&
+        (played_tm.tm_year + 1900 == this_year)) {
+      // Ok!
+      int hands = played.second;
+      if (hands < total_hands) {
+        calendar_day_status[played_tm.tm_mday - 1] = 1;
+      } else {
+        if (hands >= total_hands) {
+          calendar_day_status[played_tm.tm_mday - 1] = 2;
+        }
+      }
+    }
+  }
+
+  if (get_logger) {
+    get_logger() << "last day " << month_last_day << " today " << this_day
+                 << " plays ahead " << play_days_ahead << std::endl;
+  }
+
+  // mark days ahead as NNY.
+  for (int d = 0; d < month_last_day; ++d) {
+    if (this_day + play_days_ahead - 1 < d) {
+      calendar_day_status[d] = 3;
+    }
   }
 
   {
@@ -1256,7 +1352,14 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     of << "Calendar_panel_days:" << std::endl;
 
     for (int x = 0; x < (int)calendar_panel_days.size(); ++x) {
-      of << std::setw(2) << calendar_panel_days[x] << " ";
+      of << std::setw(2) << calendar_panel_days[x] << ":";
+      int c = calendar_panel_days[x];
+      if (c == 0)
+        of << " ";
+      else {
+        of << calendar_day_status[c - 1];
+      };
+      of << " ";
       if ((x != 0) and (((x + 1) % 7) == 0)) {
         of << std::endl;
       }
@@ -1269,6 +1372,10 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   s->addPanel(std::move(p));
   p = make_weekdays();
   p->set(8, 3);
+  s->addPanel(std::move(p));
+
+  p = make_calendar_panel();
+  p->set(8, 6);
   s->addPanel(std::move(p));
 
   /*
