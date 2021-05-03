@@ -1239,6 +1239,7 @@ door::Menu make_config_menu(void) {
                                          door::ATTR::BOLD)));
 
   m.addSelection('D', "Deck Colors");
+  m.addSelection('V', "View Settings");
   m.addSelection('Q', "Quit");
 
   return m;
