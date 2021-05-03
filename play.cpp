@@ -14,7 +14,7 @@
  * This is for testing BONUS and scoring, etc.
  *
  */
-#define CHEATER "CHEAT_YOUR_ASS_OFF"
+#define CHEATER "_CHEAT_YOUR_ASS_OFF"
 
 // static std::function<std::ofstream &(void)> get_logger;
 
@@ -135,7 +135,10 @@ int PlayCards::play(void) {
   std::unique_ptr<door::Screen> calendar = make_calendar();
   door << door::reset << door::cls;
   door << *calendar;
-  press_a_key();
+  int r = press_a_key();
+  if (r < 0) // timeout!  exit!
+    return r;
+
   // return 0;
 
   hand = 1;
@@ -1107,9 +1110,95 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel(void) {
   const int W = 41;
   std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
   p->setStyle(door::BorderStyle::DOUBLE);
-  std::string text;
-  int row;
+  p->setColor(door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
+  door::renderFunction calendarRender =
+      [](const std::string &txt) -> door::Render {
+    door::Render r(txt);
 
+    // normal digits color
+    door::ANSIColor digits(door::COLOR::CYAN, door::COLOR::BLACK);
+    // digits/days that can be played
+    door::ANSIColor digits_play(door::COLOR::CYAN, door::COLOR::BLACK,
+                                door::ATTR::BOLD);
+    // spaces color
+    door::ANSIColor spaces(door::COLOR::WHITE, door::COLOR::BLACK);
+    // o - open days
+    door::ANSIColor open(door::COLOR::GREEN, door::COLOR::BLACK,
+                         door::ATTR::BOLD);
+    // h - hands can be played
+    door::ANSIColor hands(door::COLOR::YELLOW, door::COLOR::BLACK,
+                          door::ATTR::BOLD);
+    // x - already played
+    door::ANSIColor full(door::COLOR::RED, door::COLOR::BLACK);
+    // u - No, Not Yet! unavailable
+    door::ANSIColor nny(door::COLOR::BLACK, door::COLOR::BLACK,
+                        door::ATTR::BOLD);
+    int days;
+
+    /*
+        if (get_logger) {
+          get_logger() << "Line [" << txt << "]" << std::endl;
+        }
+    */
+
+    // B _ BBBB _ BBBB _ BBBB _ BBBB _ BBBB _ BBBB _ B
+    for (days = 0; days < 7; ++days) {
+      std::string dayText;
+
+      if (days == 0) {
+        r.append(spaces);
+        // dayText = txt.substr(1, 3);
+      } // else {
+      /*
+      if (get_logger)
+        get_logger() << days << " " << 1 + (days * 6) << std::endl;
+      */
+      dayText = txt.substr(1 + (days * 6), 3);
+      // }
+
+      /*
+            if (get_logger) {
+              get_logger() << days << " "
+                           << "[" << dayText << "] " << std::endl;
+            }
+      */
+
+      if (dayText[1] == ' ') {
+        // Ok, nothing there!
+        r.append(spaces, 3);
+      } else {
+        // Something is there
+        char cday = dayText[2];
+
+        if ((cday == 'o') or (cday == 'h'))
+          r.append(digits_play, 2);
+        else
+          r.append(digits, 2);
+
+        switch (dayText[2]) {
+        case 'o':
+          r.append(open);
+          break;
+        case 'h':
+          r.append(hands);
+          break;
+        case 'x':
+          r.append(full);
+          break;
+        case 'u':
+          r.append(nny);
+          break;
+        }
+      }
+      if (days == 6)
+        r.append(spaces);
+      else
+        r.append(spaces, 3);
+    }
+    return r;
+  };
+
+  int row;
   for (row = 0; row < 6; ++row) {
     door::updateFunction calendarUpdate = [this, row]() -> std::string {
       std::string text;
@@ -1149,8 +1238,10 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel(void) {
       return text;
     };
 
+    std::string text;
     text = calendarUpdate();
-    door::Line line(text);
+    door::Line line(text, W);
+    line.setRender(calendarRender);
     line.setUpdater(calendarUpdate);
     p->addLine(std::make_unique<door::Line>(line));
   }
