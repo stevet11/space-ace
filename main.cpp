@@ -279,7 +279,8 @@ int configure(door::Door &door, DBData &db) {
           while (replace(key, "_", " ")) {
           };
           std::string value = cfg.second.as<std::string>();
-          door << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK)
+          door << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK,
+                                  door::ATTR::BOLD)
                << std::setw(20) << key
                << door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLACK,
                                   door::ATTR::BOLD)

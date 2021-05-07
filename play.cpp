@@ -84,7 +84,7 @@ PlayCards::~PlayCards() { get_logger = nullptr; }
 
 void PlayCards::init_values(void) {
   // beware of hand=1 !  We might not be playing the first hand here!
-  hand = 1;
+  // hand = 1;
 
   if (config["hands_per_day"]) {
     total_hands = config["hands_per_day"].as<int>();
@@ -131,22 +131,56 @@ int PlayCards::play(void) {
   play_day = std::chrono::system_clock::now();
   normalizeDate(play_day);
 
+  int total_hands;
+  if (config["hands_per_day"]) {
+    total_hands = config["hands_per_day"].as<int>();
+  } else
+    total_hands = 3;
+
   // check to see if played already today
+  time_t play_day_t = std::chrono::system_clock::to_time_t(play_day);
+  int played = db.handsPlayedOnDay(play_day_t);
+
+  if (get_logger) {
+    get_logger() << "played today (" << play_day_t << ")= " << played
+                 << std::endl;
+  }
+
+  if (played == 0) {
+    // playing today
+    hand = 1;
+    return play_cards();
+  } else {
+    if (played < total_hands) {
+      hand = played + 1;
+      return play_cards();
+    }
+  }
+
+  // Ok, we need to select a day.
+
   std::unique_ptr<door::Screen> calendar = make_calendar();
   door << door::reset << door::cls;
   door << *calendar;
+
+  door << door::nl;
+  door << "Choose, eh? ";
+  std::string toplay = door.input_string(3);
+
   int r = press_a_key();
   if (r < 0) // timeout!  exit!
     return r;
 
   // return 0;
+  /*
+    hand = 1;
+    // possibly init_values()
 
-  hand = 1;
-  // possibly init_values()
-
-  play_day = std::chrono::system_clock::now();
-  normalizeDate(play_day);
-  return play_cards();
+    play_day = std::chrono::system_clock::now();
+    normalizeDate(play_day);
+    return play_cards();
+    */
+  return r;
 }
 
 /**
@@ -724,6 +758,30 @@ door::renderFunction PlayCards::statusValue(door::ANSIColor status,
   door::renderFunction rf = [status,
                              value](const std::string &txt) -> door::Render {
     door::Render r(txt);
+    size_t pos = txt.find(':');
+    if (pos == std::string::npos) {
+      for (char const &c : txt) {
+        if (std::isdigit(c))
+          r.append(value);
+        else
+          r.append(status);
+      }
+    } else {
+      pos++;
+      r.append(status, pos);
+      r.append(value, txt.length() - pos);
+    }
+    return r;
+  };
+  return rf;
+}
+
+/*
+door::renderFunction PlayCards::_statusValue(door::ANSIColor status,
+                                             door::ANSIColor value) {
+  door::renderFunction rf = [status,
+                             value](const std::string &txt) -> door::Render {
+    door::Render r(txt);
     door::ColorOutput co;
 
     co.pos = 0;
@@ -770,6 +828,7 @@ door::renderFunction PlayCards::statusValue(door::ANSIColor status,
   };
   return rf;
 }
+*/
 
 /**
  * @brief make the score panel
@@ -924,6 +983,38 @@ door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
   door::renderFunction rf = [bracket, inner,
                              outer](const std::string &txt) -> door::Render {
     door::Render r(txt);
+
+    bool inOuter = true;
+
+    for (char const &c : txt) {
+      if (c == '[') {
+        inOuter = false;
+        r.append(bracket);
+        continue;
+      }
+      if (c == ']') {
+        inOuter = true;
+        r.append(bracket);
+        continue;
+      }
+      if (inOuter)
+        r.append(outer);
+      else
+        r.append(inner);
+    }
+    return r;
+  };
+
+  return rf;
+}
+
+/*
+door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
+                                                  door::ANSIColor inner,
+                                                  door::ANSIColor outer) {
+  door::renderFunction rf = [bracket, inner,
+                             outer](const std::string &txt) -> door::Render {
+    door::Render r(txt);
     door::ColorOutput co;
 
     co.pos = 0;
@@ -986,6 +1077,7 @@ door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
   };
   return rf;
 }
+*/
 
 std::unique_ptr<door::Panel> PlayCards::make_command_panel(void) {
   const int W = 76;
@@ -1005,9 +1097,9 @@ std::unique_ptr<door::Panel> PlayCards::make_command_panel(void) {
 
   door::ANSIColor bracketColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                door::ATTR::BOLD);
-  door::ANSIColor innerColor(door::COLOR::CYAN, door::COLOR::BLUE,
+  door::ANSIColor outerColor(door::COLOR::CYAN, door::COLOR::BLUE,
                              door::ATTR::BOLD);
-  door::ANSIColor outerColor(door::COLOR::GREEN, door::COLOR::BLUE,
+  door::ANSIColor innerColor(door::COLOR::GREEN, door::COLOR::BLUE,
                              door::ATTR::BOLD);
 
   door::renderFunction cmdRender =
@@ -1111,6 +1203,7 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel(void) {
   std::unique_ptr<door::Panel> p = make_unique<door::Panel>(W);
   p->setStyle(door::BorderStyle::DOUBLE);
   p->setColor(door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK));
+
   door::renderFunction calendarRender =
       [](const std::string &txt) -> door::Render {
     door::Render r(txt);
@@ -1304,6 +1397,76 @@ std::unique_ptr<door::Panel> PlayCards::make_calendar_panel(void) {
  *         ╚═════════════════════════════════════════╝
  *
  *
+ * Sunday
+ * Monday
+ * Tuesday
+ * Wednesday
+ * Thursday
+ * Friday
+ * Saturday
+ *
+ * 12345678901234567890123456789012345678901234567890123456789012345678901234567890
+ *
+ *╔═══╗╔═══════════════════════════════════════════════════════════════════════╗
+ *║ N ║║  Sunday    Monday    Tuesday  Wednesday Thursday   Friday   Saturday
+ *║ ║ O
+ *║╚═══════════════════════════════════════════════════════════════════════╝
+ *     1 ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗
+ *       ║  1 x ║  ║  2 x ║  ║  3 o ║  ║  4 o ║  ║  5 o ║  ║  6 o ║  ║  7 o ║
+ *       ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝
+ *     4 ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗
+ *       ║  8 x ║  ║  9 x ║  ║ 10 o ║  ║ 11 o ║  ║ 12 o ║  ║ 13 o ║  ║ 14 o ║
+ *       ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝
+ *     7 ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗
+ *       ║ 15 x ║  ║ 16 x ║  ║ 17 o ║  ║ 18 o ║  ║ 19 o ║  ║ 20 o ║  ║ 21 o ║
+ *       ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝
+ *    10 ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗  ╔══════╗
+ *       ║ 22 x ║  ║ 23 x ║  ║ 24 o ║  ║ 25 o ║  ║ 26 o ║  ║ 27 o ║  ║ 28 o ║
+ *       ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝  ╚══════╝
+ *    13 ╔══════╗  ╔══════╗  ╔══════╗
+ *       ║ 29 x ║  ║ 30 u ║  ║ 31 u ║
+ *       ╚══════╝  ╚══════╝  ╚══════╝
+ *
+ *     +2         +12       +22        +32      +42       +52       +62
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ * 123456789012345678901234567890123456789012345678901234567890123456789012345
+ *  ╔═══╗  ╔═════════════════════════════════════════════════════╗
+ *  ║ N ║  ║ SUN     MON     TUE     WED     THU     FRI     SAT ║
+ *  ║ O ║  ╚═════════════════════════════════════════════════════╝
+ *  ║ V ║  ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗
+ *  ║ E ║  ║  1x ║ ║  2x ║ ║  3o ║ ║  4o ║ ║  5o ║ ║  6o ║ ║  7o ║
+ *         ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝
+ *         ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗
+ *         ║  8x ║ ║  9x ║ ║ 10o ║ ║ 11o ║ ║ 12o ║ ║ 13o ║ ║ 14o ║
+ *         ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝
+ *         ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗
+ *         ║ 15x ║ ║ 16x ║ ║ 17o ║ ║ 18o ║ ║ 19o ║ ║ 20o ║ ║ 21o ║
+ *         ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝
+ *         ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗ ╔═════╗
+ *         ║ 22x ║ ║ 23x ║ ║ 24o ║ ║ 25o ║ ║ 26o ║ ║ 27o ║ ║ 28o ║
+ *         ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚═════╝
+ *         ╔═════╗ ╔═════╗ ╔═════╗
+ *         ║ 29x ║ ║ 30u ║ ║ 31u ║
+ *         ╚═════╝ ╚═════╝ ╚═════╝
+ *
+ *          ^ Actually single lines, not double lines here ^
+ *
+ *  ║ M ║  ║  8x    9x   10o   11o   12o   13o   14o ║
+ *  ║ B ║  ║ 15h   16h   17h   18h   19u   20u   21u ║
+ *  ║ E ║  ║ 22u   23u   24u   25u   26u   27u   28u ║
+ *  ║ R ║  ║ 29u   30u   31u                         ║
+ *  ╚═══╝  ║                                         ║
+ *         ╚═════════════════════════════════════════╝
+ *
  *
  *
  * @return std::unique_ptr<door::Panel>
@@ -1400,7 +1563,8 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     play_days_ahead = config["play_days_ahead"].as<int>();
   }
 
-  // until maint is setup, we need to verify that the month and year is correct.
+  // until maint is setup, we need to verify that the month and year is
+  // correct.
   for (auto played : last_played) {
     get_logger() << "played " << played.first << " hands: " << played.second
                  << std::endl;
@@ -1458,7 +1622,13 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     of << std::endl;
   }
 
-  std::unique_ptr<door::Panel> p = make_month(current_month(month));
+  std::string current = current_month(month);
+  string_toupper(current);
+  if (current.length() < 6) {
+    current.insert(0, "  ");
+    current += "  ";
+  }
+  std::unique_ptr<door::Panel> p = make_month(current);
   p->set(3, 3);
   s->addPanel(std::move(p));
   p = make_weekdays();
