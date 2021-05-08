@@ -21,6 +21,7 @@ YAML::Node config;
 door::ANSIColor stringToANSIColor(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
+std::function<void(void)> cls_display_starfield;
 
 /*
 unsigned long score = 0;
@@ -237,6 +238,12 @@ int configure(door::Door &door, DBData &db) {
       db.setSetting(deckcolor, newColor);
       save_deckcolor = false;
     }
+
+    if (cls_display_starfield)
+      cls_display_starfield();
+    else
+      door << door::reset << door::cls;
+
     r = menu.choose(door);
     if (r > 0) {
       door << door::reset << door::cls;
@@ -251,6 +258,12 @@ int configure(door::Door &door, DBData &db) {
         door << door::reset << door::cls;
         auto deck = make_deck_menu();
         deck.defaultSelection(currentOpt);
+
+        if (cls_display_starfield)
+          cls_display_starfield();
+        else
+          door << door::reset << door::cls;
+
         int newOpt = deck.choose(door);
         door << door::reset << door::cls;
 
@@ -267,7 +280,12 @@ int configure(door::Door &door, DBData &db) {
       }
       if (c == 'V') {
         // view settings -- Sysop Configuration
-        door << door::reset << door::cls;
+        if (cls_display_starfield)
+          cls_display_starfield();
+        else
+          door << door::reset << door::cls;
+        door << door::Goto(1, 1);
+
         door << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK)
              << "Game Settings - SysOp Configurable" << door::reset << door::nl
              << door::nl;
@@ -374,6 +392,13 @@ int main(int argc, char *argv[]) {
 
   // store the door log so we can easily access it.
   get_logger = [&door]() -> ofstream & { return door.log(); };
+
+  std::random_device rd;
+  std::mt19937 rng(rd());
+
+  cls_display_starfield = [&door, &rng]() -> void {
+    display_starfield(door, rng);
+  };
 
   DBData spacedb;
   spacedb.setUser(door.username);
@@ -484,8 +509,6 @@ int main(int argc, char *argv[]) {
 
   // https://stackoverflow.com/questions/5008804/generating-random-integer-from-a-range
 
-  std::random_device rd; // only used once to initialise (seed) engine
-  std::mt19937 rng(rd());
   // random-number engine used (Mersenne-Twister in this case)
   // std::uniform_int_distribution<int> uni(min, max); // guaranteed
   // unbiased
@@ -598,5 +621,6 @@ int main(int argc, char *argv[]) {
   door << door::nl << "Returning you to the BBS, please wait..." << door::nl;
 
   get_logger = nullptr;
+  cls_display_starfield = nullptr;
   return 0;
 }

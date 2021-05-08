@@ -160,12 +160,53 @@ int PlayCards::play(void) {
   // Ok, we need to select a day.
 
   std::unique_ptr<door::Screen> calendar = make_calendar();
-  door << door::reset << door::cls;
+
+  if (cls_display_starfield)
+    cls_display_starfield();
+  else
+    door << door::reset << door::cls;
+
   door << *calendar;
 
   door << door::nl;
   door << "Choose, eh? ";
   std::string toplay = door.input_string(3);
+
+  int number;
+  try {
+    number = std::stoi(toplay);
+  } catch (std::exception &e) {
+    number = 0;
+  }
+
+  if (number == 0)
+    return ' ';
+  int status;
+  if (get_logger)
+    get_logger() << "number " << number;
+  if (number <= 31) {
+    status = calendar_day_status[number - 1];
+    if (get_logger)
+      get_logger() << "status " << status << std::endl;
+
+    if (status == 0) {
+      // play full day -- how do I figure out the date for this?
+      hand = 1;
+      play_day_t = calendar_day_t[number - 1];
+      play_day = std::chrono::system_clock::from_time_t(play_day_t);
+      return play_cards();
+    }
+    if (status == 1) {
+      // play half day
+      play_day_t = calendar_day_t[number - 1];
+      play_day = std::chrono::system_clock::from_time_t(play_day_t);
+      played = db.handsPlayedOnDay(play_day_t);
+      if (played < total_hands) {
+        hand = played + 1;
+        return play_cards();
+      }
+    }
+  };
 
   int r = press_a_key();
   if (r < 0) // timeout!  exit!
@@ -776,60 +817,6 @@ door::renderFunction PlayCards::statusValue(door::ANSIColor status,
   return rf;
 }
 
-/*
-door::renderFunction PlayCards::_statusValue(door::ANSIColor status,
-                                             door::ANSIColor value) {
-  door::renderFunction rf = [status,
-                             value](const std::string &txt) -> door::Render {
-    door::Render r(txt);
-    door::ColorOutput co;
-
-    co.pos = 0;
-    co.len = 0;
-    co.c = status;
-
-    size_t pos = txt.find(':');
-    if (pos == std::string::npos) {
-      // failed to find :, render digits/numbers in value color
-      int tpos = 0;
-      for (char const &c : txt) {
-        if (std::isdigit(c)) {
-          if (co.c != value) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-            co.c = value;
-          }
-        } else {
-          if (co.c != status) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-            co.c = status;
-          }
-        }
-        co.len++;
-        tpos++;
-      }
-      if (co.len != 0)
-        r.outputs.push_back(co);
-    } else {
-      pos++; // Have : in status color
-      co.len = pos;
-      r.outputs.push_back(co);
-      co.reset();
-      co.pos = pos;
-      co.c = value;
-      co.len = txt.length() - pos;
-      r.outputs.push_back(co);
-    }
-
-    return r;
-  };
-  return rf;
-}
-*/
-
 /**
  * @brief make the score panel
  * This displays: Name, Score, Time Used, Hands Played.
@@ -1007,77 +994,6 @@ door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
 
   return rf;
 }
-
-/*
-door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
-                                                  door::ANSIColor inner,
-                                                  door::ANSIColor outer) {
-  door::renderFunction rf = [bracket, inner,
-                             outer](const std::string &txt) -> door::Render {
-    door::Render r(txt);
-    door::ColorOutput co;
-
-    co.pos = 0;
-    co.len = 0;
-    co.c = outer;
-    bool inOuter = true;
-
-    int tpos = 0;
-    for (char const &c : txt) {
-      if (inOuter) {
-
-        // we're in the outer text
-        if (co.c != outer) {
-          if (co.len != 0) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-          }
-          co.c = outer;
-        }
-
-        // check for [
-        if (c == '[') {
-          if (co.len != 0) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-          }
-          inOuter = false;
-          co.c = bracket;
-        }
-      } else {
-        // We're not in the outer.
-
-        if (co.c != inner) {
-          if (co.len != 0) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-          }
-          co.c = inner;
-        }
-
-        if (c == ']') {
-          if (co.len != 0) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-          }
-          inOuter = true;
-          co.c = bracket;
-        }
-      }
-      co.len++;
-      tpos++;
-    }
-    if (co.len != 0)
-      r.outputs.push_back(co);
-    return r;
-  };
-  return rf;
-}
-*/
 
 std::unique_ptr<door::Panel> PlayCards::make_command_panel(void) {
   const int W = 76;
@@ -1515,6 +1431,9 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   }
   normalizeDate(month);
   month_t = std::chrono::system_clock::to_time_t(month);
+  calendar_day_t.fill(0);
+  calendar_day_t[0] = month_t;
+
   get_logger() << "1st of Month is "
                << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
   localtime_r(&month_t, &month_lt);
@@ -1523,20 +1442,35 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   get_logger() << "1st of the Month starts on " << FIRST_WEEKDAY << std::endl;
 
   // find the last day of this month.
+  auto month_l = month;
   time_t month_last_day_t = month_t;
   std::tm mld_tm;
-  localtime_r(&month_last_day_t, &mld_tm);
-  // increment the month, if > 11 (we've entered a new year)
-  mld_tm.tm_mon += 1;
-  if (mld_tm.tm_mon > 11) {
-    mld_tm.tm_mon = 0;
-    mld_tm.tm_year++;
-  }
-  month_last_day_t = std::mktime(&mld_tm);
-  // Ok, this should be the 1st of next month.
-  month_last_day_t -= (60 * 60 * 24);
-  localtime_r(&month_last_day_t, &mld_tm);
-  month_last_day = mld_tm.tm_mday;
+
+  do {
+    month_l += 24h;
+    normalizeDate(month_l);
+    month_last_day_t = std::chrono::system_clock::to_time_t(month_l);
+    localtime_r(&month_last_day_t, &mld_tm);
+    if (mld_tm.tm_mday != 1) {
+      month_last_day = mld_tm.tm_mday;
+      calendar_day_t[month_last_day - 1] = month_last_day_t;
+    }
+  } while (mld_tm.tm_mday != 1);
+
+  /*
+    // increment the month, if > 11 (we've entered a new year)
+    mld_tm.tm_mon += 1;
+    if (mld_tm.tm_mon > 11) {
+      mld_tm.tm_mon = 0;
+      mld_tm.tm_year++;
+    }
+    month_last_day_t = std::mktime(&mld_tm);
+    // Ok, this should be the 1st of next month.
+    month_last_day_t -= (60 * 60 * 24);
+    localtime_r(&month_last_day_t, &mld_tm);
+    month_last_day = mld_tm.tm_mday;
+    */
+
   get_logger() << "Last day is " << month_last_day << std::endl;
 
   calendar_panel_days.fill(0);
@@ -1556,6 +1490,7 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   }
 
   calendar_day_status.fill(0);
+
   auto last_played = db.whenPlayed();
   int play_days_ahead = 0;
 

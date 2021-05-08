@@ -17,6 +17,8 @@ void string_toupper(std::string &str);
 // logger access
 extern std::function<std::ofstream &(void)> get_logger;
 
+extern std::function<void(void)> cls_display_starfield;
+
 // configuration settings access
 #include "yaml-cpp/yaml.h"
 extern YAML::Node config;

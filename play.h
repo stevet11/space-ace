@@ -25,6 +25,7 @@ private:
    * 3 (NNY)
    */
   std::array<int, 31> calendar_day_status;
+  std::array<time_t, 31> calendar_day_t;
 
   std::unique_ptr<door::Panel> spaceAceTriPeaks;
   std::unique_ptr<door::Panel> score_panel;
