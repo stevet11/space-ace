@@ -898,17 +898,22 @@ std::unique_ptr<door::Panel> PlayCards::make_streak_panel(void) {
   door::renderFunction svRender = statusValue(statusColor, valueColor);
 
   {
-    std::string text = "Playing: ";
-    auto in_time_t = std::chrono::system_clock::to_time_t(play_day);
-    std::stringstream ss;
-    if (config["date_format"]) {
-      std::string fmt = config["date_format"].as<std::string>();
-      ss << std::put_time(std::localtime(&in_time_t), fmt.c_str());
-    } else
-      ss << std::put_time(std::localtime(&in_time_t), "%B %d");
-    text.append(ss.str());
+    door::updateFunction dateUpdate = [this](void) -> std::string {
+      std::string text = "Playing: ";
+      auto in_time_t = std::chrono::system_clock::to_time_t(play_day);
+      std::stringstream ss;
+      if (config["date_format"]) {
+        std::string fmt = config["date_format"].as<std::string>();
+        ss << std::put_time(std::localtime(&in_time_t), fmt.c_str());
+      } else
+        ss << std::put_time(std::localtime(&in_time_t), "%B %d");
+      text.append(ss.str());
+      return text;
+    };
+    std::string text = dateUpdate();
     door::Line current(text, W);
     current.setRender(svRender);
+    current.setUpdater(dateUpdate);
     p->addLine(std::make_unique<door::Line>(current));
   }
   {
