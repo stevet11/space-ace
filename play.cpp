@@ -66,6 +66,9 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
    * for today.
    */
 
+  hand = 0;
+  total_hands = 0;
+
   spaceAceTriPeaks = make_tripeaks();
   score_panel = make_score_panel();
   streak_panel = make_streak_panel();
