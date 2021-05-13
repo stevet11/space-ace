@@ -46,13 +46,15 @@ void DBData::create_tables(void) {
 
 retry:
   try {
-    db.exec("CREATE TABLE IF NOT EXISTS \
-settings(username TEXT, setting TEXT, value TEXT, \
-PRIMARY KEY(username, setting));");
-    db.exec("CREATE TABLE IF NOT EXISTS \
-scores ( \"username\" TEXT, \"when\" INTEGER, \
-\"date\" INTEGER, \"hand\" INTEGER, \"won\" INTEGER, \"score\" INTEGER, \
-PRIMARY KEY(\"username\", \"date\", \"hand\"));");
+    db.exec("CREATE TABLE IF NOT EXISTS settings(username TEXT, setting TEXT, "
+            "value TEXT, PRIMARY KEY(username, setting));");
+    db.exec(
+        "CREATE TABLE IF NOT EXISTS scores ( \"username\" TEXT, \"when\" "
+        "INTEGER, \"date\" INTEGER, \"hand\" INTEGER, \"won\" INTEGER, "
+        "\"score\" INTEGER, PRIMARY KEY(\"username\", \"date\", \"hand\"));");
+    db.exec("CREATE TABLE IF NOT EXISTS monthly (	\"month\"	"
+            "INTEGER, \"username\"	TEXT, \"days\"	INTEGER, 	"
+            "\"score\"	INTEGER, PRIMARY KEY(\"month\",\"username\") );");
   } catch (std::exception &e) {
     if (get_logger) {
       get_logger() << "create_tables():" << std::endl;
@@ -521,4 +523,17 @@ void normalizeDate(time_t &tt, int hour) {
     tt -= (60*60);
   }
   */
+}
+
+void firstOfMonthDate(std::chrono::_V2::system_clock::time_point &date) {
+  using namespace std::literals;
+  time_t date_t = std::chrono::system_clock::to_time_t(date);
+  // adjust to first day of the month
+  std::tm date_tm;
+  localtime_r(&date_t, &date_tm);
+
+  if (date_tm.tm_mday > 1) {
+    date -= 24h * (date_tm.tm_mday - 1);
+  }
+  normalizeDate(date);
 }

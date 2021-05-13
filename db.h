@@ -63,6 +63,7 @@ public:
 
 void normalizeDate(std::chrono::_V2::system_clock::time_point &date);
 void normalizeDate(time_t &tt, int hour = 2);
+void firstOfMonthDate(std::chrono::_V2::system_clock::time_point &date);
 std::string convertDateToDateScoreFormat(time_t tt);
 
 #endif
