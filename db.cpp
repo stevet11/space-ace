@@ -461,13 +461,169 @@ retry:
   return plays;
 }
 
+struct month_user {
+  time_t date;
+  std::string username;
+  // friend bool operator<(const month_user &l, const month_user &r);
+};
+
+bool operator<(const month_user &l, const month_user &r) {
+  if (l.date < r.date)
+    return true;
+  if (l.date > r.date)
+    return false;
+
+  // Otherwise a are equal
+  if (l.username < r.username)
+    return true;
+  if (l.username > r.username)
+    return false;
+
+  // Otherwise both are equal
+  return false;
+}
+
+struct month_stats {
+  int days;
+  int hands_won;
+  int score;
+};
+
 /**
  * @brief This will expire out old scores
  *
  * @todo implement, but don't throw away high scores.
  *
+ * @param month_first_t
+ *
  */
-void DBData::expireScores(void) {}
+void DBData::expireScores(time_t month_first_t) {
+  // step 1:  aquire lock
+  std::ofstream lockfile;
+  lockfile.open("db.lock", std::ofstream::out | std::ofstream::app);
+  long pos = lockfile.tellp();
+  if (pos == 0) {
+    lockfile << "OK.";
+    lockfile.flush();
+    lockfile.close();
+  } else {
+    if (get_logger()) {
+      get_logger() << "db.lock file exists.  Skipping maint." << std::endl;
+    }
+    lockfile.close();
+    return;
+  }
+
+  std::map<month_user, month_stats> monthly;
+
+  // Ok, do maint things here
+  SQLite::Statement stmt(
+      db, "SELECT `date`,username,SUM(score),SUM(won) FROM scores "
+          "WHERE `date` < ? GROUP BY `date`,username ORDER BY "
+          "`date`,SUM(score) DESC;");
+
+  try {
+    stmt.bind(1, (long)month_first_t);
+
+    while (stmt.executeStep()) {
+      // get time_t, conver to time_point, find first of month, convert back to
+      // time_t
+      std::chrono::_V2::system_clock::time_point date;
+
+      date = std::chrono::system_clock::from_time_t((long)stmt.getColumn(0));
+      firstOfMonthDate(date);
+      time_t date_t = std::chrono::system_clock::to_time_t(date);
+
+      month_user mu;
+
+      mu.date = date_t;
+      mu.username = (const char *)stmt.getColumn(1);
+
+      auto map_iter = monthly.find(mu);
+      if (map_iter == monthly.end()) {
+        // not found
+        month_stats ms;
+        ms.days = 1;
+        ms.score = stmt.getColumn(2);
+        ms.hands_won = stmt.getColumn(3);
+        monthly[mu] = ms;
+      } else {
+        // was found
+        month_stats &ms = monthly[mu];
+        ms.days++;
+        ms.score += (int)stmt.getColumn(2);
+        ms.hands_won += (int)stmt.getColumn(3);
+      }
+    }
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "expireScores() SELECT failed" << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+  }
+
+  // Ok! I have the data that I need!
+  if (monthly.empty()) {
+    std::remove("db.lock");
+    return;
+  }
+
+  try {
+
+    SQLite::Transaction transaction(db);
+
+    // If we fail for any reason within here -- we should be safe.
+    SQLite::Statement stmt_delete(db, "DELETE FROM scores WHERE `date` < ?;");
+
+    stmt_delete.bind(1, (long)month_first_t);
+    stmt_delete.exec();
+
+    /*
+        if (get_logger) {
+          get_logger() << "Ok, deleted records < " << month_first_t <<
+       std::endl;
+        }
+    */
+
+    SQLite::Statement stmt_insert(db,
+                                  "INSERT INTO monthly(month, username, days, "
+                                  "hands_won, score) VALUES(?,?,?,?,?);");
+    for (auto key : monthly) {
+      /*
+            if (get_logger) {
+              get_logger() << key.first.date << ":" << key.first.username << " "
+                           << key.second.score << std::endl;
+            }
+      */
+      stmt_insert.bind(1, (long)key.first.date);
+      stmt_insert.bind(2, key.first.username.c_str());
+      stmt_insert.bind(3, key.second.days);
+      stmt_insert.bind(4, key.second.hands_won);
+      stmt_insert.bind(5, key.second.score);
+      stmt_insert.exec();
+      stmt_insert.reset();
+    }
+
+    transaction.commit();
+
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "expireScores() DELETE/INSERTs failed" << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+  }
+
+  if (get_logger) {
+    for (auto key : monthly) {
+      get_logger() << key.first.date << ":" << key.first.username << "  "
+                   << key.second.days << ", " << key.second.hands_won << ", "
+                   << key.second.score << ::std::endl;
+    }
+  }
+  // clean up
+
+  std::remove("db.lock");
+}
 
 /**
  * @brief Format date to string.

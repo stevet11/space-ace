@@ -55,7 +55,7 @@ public:
   std::vector<scores_details> getScoresOnDay(time_t date);
   std::map<time_t, std::vector<scores_data>> getScores(void);
   std::map<time_t, int> getPlayed(void);
-  void expireScores(void);
+  void expireScores(time_t month_first_t);
 
   int handsPlayedOnDay(time_t day);
   std::map<time_t, int> whenPlayed(void);

@@ -451,16 +451,26 @@ int main(int argc, char *argv[]) {
   // retrieve lastcall
   time_t last_call = std::stol(spacedb.getSetting("LastCall", "0"));
 
-  // store now as lastcall
-  time_t now =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  std::chrono::_V2::system_clock::time_point now =
+      std::chrono::system_clock::now();
 
-  spacedb.setSetting("LastCall", std::to_string(now));
+  // store now as lastcall
+  time_t now_t = std::chrono::system_clock::to_time_t(now);
+
+  spacedb.setSetting("LastCall", std::to_string(now_t));
+
+  // run maint
+  {
+    std::chrono::_V2::system_clock::time_point maint_date = now;
+    firstOfMonthDate(maint_date);
+
+    spacedb.expireScores(std::chrono::system_clock::to_time_t(maint_date));
+  }
 
   // Have they used this door before?
   if (last_call != 0) {
     door << "Welcome Back!" << door::nl;
-    auto nowClock = std::chrono::system_clock::from_time_t(now);
+    auto nowClock = std::chrono::system_clock::from_time_t(now_t);
     auto lastClock = std::chrono::system_clock::from_time_t(last_call);
     auto delta = nowClock - lastClock;
 
