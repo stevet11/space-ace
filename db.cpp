@@ -52,9 +52,9 @@ retry:
         "CREATE TABLE IF NOT EXISTS scores ( \"username\" TEXT, \"when\" "
         "INTEGER, \"date\" INTEGER, \"hand\" INTEGER, \"won\" INTEGER, "
         "\"score\" INTEGER, PRIMARY KEY(\"username\", \"date\", \"hand\"));");
-    db.exec("CREATE TABLE IF NOT EXISTS monthly (	\"month\"	"
-            "INTEGER, \"username\"	TEXT, \"days\"	INTEGER, 	"
-            "\"score\"	INTEGER, PRIMARY KEY(\"month\",\"username\") );");
+    db.exec("CREATE TABLE IF NOT EXISTS \"monthly\" ( \"month\"	INTEGER, "
+            "\"username\" TEXT, \"days\" INTEGER, \"hands_won\" INTEGER, "
+            "\"score\" INTEGER, PRIMARY KEY(\"month\",\"username\") );");
   } catch (std::exception &e) {
     if (get_logger) {
       get_logger() << "create_tables():" << std::endl;
@@ -311,46 +311,83 @@ retry:
  *
  * @return std::map<time_t, std::vector<scores_data>>
  */
-std::map<time_t, std::vector<scores_data>> DBData::getScores(void) {
-  std::map<time_t, std::vector<scores_data>> scores;
+std::vector<scores_data> DBData::getScores(int limit) {
+  std::vector<scores_data> scores;
   int tries = 0;
 
 retry:
   try {
     SQLite::Statement stmt(
         db, "SELECT `date`,username,SUM(score),SUM(won) FROM scores "
-            "GROUP BY `date`,username ORDER BY `date`,SUM(score) DESC;");
-    time_t current = 0;
-    std::vector<scores_data> vsd;
+            "GROUP BY `date`,username ORDER BY SUM(score) DESC LIMIT ?;");
+    stmt.bind(1, limit);
+    //        db, "SELECT `date`,username,SUM(score),SUM(won) FROM scores "
+    //            "GROUP BY `date`,username ORDER BY `date`,SUM(score) DESC;");
 
     while (stmt.executeStep()) {
-      time_t the_date = stmt.getColumn(0);
-
-      if (current == 0) {
-        // ok, we've got the first one!
-        current = the_date;
-      } else {
-        // Ok, are we on another date now?
-        if (the_date != current) {
-          scores[current] = std::move(vsd);
-          vsd.clear();
-          current = the_date;
-        }
-      }
       scores_data sd;
+      sd.date = (long)stmt.getColumn(0);
       sd.user = (const char *)stmt.getColumn(1);
-      sd.date = the_date;
       sd.score = stmt.getColumn(2);
       sd.won = stmt.getColumn(3);
-      vsd.push_back(sd);
+      scores.push_back(sd);
     }
-    if (!vsd.empty()) {
-      scores[current] = std::move(vsd);
-    }
-    vsd.clear();
+
   } catch (std::exception &e) {
     if (get_logger) {
       get_logger() << "getScores(): " << std::endl;
+      get_logger() << "SQLite exception: " << e.what() << std::endl;
+    }
+    scores.clear();
+    if (strcmp(e.what(), DBLOCK) == 0) {
+      ++tries;
+      if (tries < locked_retries) {
+        retry_wait();
+        goto retry;
+      }
+      if (get_logger)
+        get_logger() << "giving up! " << locked_retries << " retries."
+                     << std::endl;
+    }
+  }
+  if (tries > 0)
+    if (get_logger)
+      get_logger() << "success after " << tries << std::endl;
+  return scores;
+}
+
+/**
+ * @brief Gets scores, time_t is day, vector has user and scores sorted highest
+ * to lowest.
+ *
+ * (	\"month\", \"username\"	, \"days\",	hands_won, "\"score\"
+ *
+ * @return std::map<time_t, std::vector<scores_data>>
+ */
+std::vector<monthly_data> DBData::getMonthlyScores(int limit) {
+  std::vector<monthly_data> scores;
+  scores.reserve(limit);
+  int tries = 0;
+
+retry:
+  try {
+    SQLite::Statement stmt(
+        db, "SELECT month, username, days, hands_won, score FROM monthly "
+            "ORDER BY score DESC LIMIT ?;");
+    stmt.bind(1, limit);
+
+    while (stmt.executeStep()) {
+      monthly_data data;
+      data.date = (long)stmt.getColumn(0);
+      data.user = (const char *)stmt.getColumn(1);
+      data.days = stmt.getColumn(2);
+      data.hands_won = stmt.getColumn(3);
+      data.score = stmt.getColumn(4);
+      scores.push_back(data);
+    }
+  } catch (std::exception &e) {
+    if (get_logger) {
+      get_logger() << "getMonthlyScores( " << limit << "): " << std::endl;
       get_logger() << "SQLite exception: " << e.what() << std::endl;
     }
     scores.clear();
@@ -419,7 +456,8 @@ retry:
 /**
  * @brief When has the user played?
  *
- * This returns a map of date (time_t), and number of hands played on that date.
+ * This returns a map of date (time_t), and number of hands played on that
+ * date.
  *
  * @return std::map<time_t, long>
  */
@@ -492,7 +530,7 @@ struct month_stats {
 /**
  * @brief This will expire out old scores
  *
- * @todo implement, but don't throw away high scores.
+ * Merges scores into monthly table.
  *
  * @param month_first_t
  *
@@ -526,8 +564,8 @@ void DBData::expireScores(time_t month_first_t) {
     stmt.bind(1, (long)month_first_t);
 
     while (stmt.executeStep()) {
-      // get time_t, conver to time_point, find first of month, convert back to
-      // time_t
+      // get time_t, conver to time_point, find first of month, convert back
+      // to time_t
       std::chrono::_V2::system_clock::time_point date;
 
       date = std::chrono::system_clock::from_time_t((long)stmt.getColumn(0));
@@ -591,7 +629,8 @@ void DBData::expireScores(time_t month_first_t) {
     for (auto key : monthly) {
       /*
             if (get_logger) {
-              get_logger() << key.first.date << ":" << key.first.username << " "
+              get_logger() << key.first.date << ":" << key.first.username << "
+         "
                            << key.second.score << std::endl;
             }
       */
@@ -641,6 +680,29 @@ std::string convertDateToDateScoreFormat(time_t tt) {
     ss << std::put_time(std::localtime(&tt), custom_format.c_str());
   } else {
     ss << std::put_time(std::localtime(&tt), "%0m/%0d/%Y");
+  }
+
+  std::string date = ss.str();
+  return date;
+}
+
+/**
+ * @brief Format date to string.
+ *
+ * We use default "%0m/%0d/%Y", but can be configured by SysOp via
+ * config["date_score"] setting.  "%Y/%0m/%0d" for non-US?
+ * https://en.cppreference.com/w/cpp/io/manip/put_time
+ *
+ * @param tt
+ * @return std::string
+ */
+std::string convertDateToMonthlyFormat(time_t tt) {
+  std::stringstream ss;
+  if (config["date_monthly"]) {
+    std::string custom_format = config["date_monthly"].as<std::string>();
+    ss << std::put_time(std::localtime(&tt), custom_format.c_str());
+  } else {
+    ss << std::put_time(std::localtime(&tt), "%B %Y");
   }
 
   std::string date = ss.str();

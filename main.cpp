@@ -435,6 +435,11 @@ int main(int argc, char *argv[]) {
     update_config = true;
   }
 
+  if (!config["date_monthly"]) {
+    config["date_monthly"] = "%B %Y";
+    update_config = true;
+  }
+
   /*
     if (config["hands_per_day"]) {
       get_logger() << "hands_per_day: " << config["hands_per_day"].as<int>()
@@ -566,17 +571,34 @@ int main(int argc, char *argv[]) {
 
     case 2: // view scores
     {
-      door << door::cls;
-      auto all_scores = spacedb.getScores();
-      for (auto it : all_scores) {
-        time_t on_this_date = it.first;
-        std::string nice_date = convertDateToDateScoreFormat(on_this_date);
-        door << "  *** " << nice_date << " ***" << door::nl;
+      // door << door::cls;
+      display_starfield(door, rng);
+      door << door::Goto(1, 2);
 
-        for (auto sd : it.second) {
-          door << setw(15) << sd.user << " " << sd.won << " " << sd.score
-               << door::nl;
-        }
+      auto monthly_scores = spacedb.getMonthlyScores(10);
+      if (!monthly_scores.empty()) {
+        door << "The TOP monthly Scores:" << door::nl;
+      }
+      for (auto it : monthly_scores) {
+        time_t date = it.date;
+        std::string nice_date = convertDateToMonthlyFormat(date);
+        door << nice_date << " " << std::setw(18) << it.user << " " << it.score
+             << door::nl;
+      }
+      door << door::nl;
+
+      // I probably want JUST the top 10 here!
+
+      auto all_scores = spacedb.getScores();
+      if (!all_scores.empty()) {
+        door << "The Top Scores for this Month:" << door::nl;
+      }
+
+      for (auto it : all_scores) {
+
+        std::string nice_date = convertDateToDateScoreFormat(it.date);
+        door << "  *** " << nice_date << setw(15) << it.user << " " << it.won
+             << " " << it.score << door::nl;
       }
       door << "====================" << door::nl;
     }

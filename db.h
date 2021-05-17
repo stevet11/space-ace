@@ -23,6 +23,14 @@ typedef struct {
   int won;
 } scores_data;
 
+typedef struct {
+  time_t date;
+  std::string user;
+  int days;
+  int hands_won;
+  int score;
+} monthly_data;
+
 class DBData {
   SQLite::Database db;
   void create_tables(void);
@@ -53,7 +61,8 @@ public:
   void saveScore(time_t when, time_t date, int hand, int won, int score);
 
   std::vector<scores_details> getScoresOnDay(time_t date);
-  std::map<time_t, std::vector<scores_data>> getScores(void);
+  std::vector<monthly_data> getMonthlyScores(int limit = 10);
+  std::vector<scores_data> getScores(int limit = 10);
   std::map<time_t, int> getPlayed(void);
   void expireScores(time_t month_first_t);
 
@@ -65,5 +74,6 @@ void normalizeDate(std::chrono::_V2::system_clock::time_point &date);
 void normalizeDate(time_t &tt, int hour = 2);
 void firstOfMonthDate(std::chrono::_V2::system_clock::time_point &date);
 std::string convertDateToDateScoreFormat(time_t tt);
+std::string convertDateToMonthlyFormat(time_t tt);
 
 #endif

@@ -47,6 +47,8 @@ private:
   std::unique_ptr<door::Panel> make_calendar_panel(void);
   std::unique_ptr<door::Screen> make_calendar(void);
 
+  void update_calendar_days(time_t month_t);
+
   std::string current_month(std::chrono::_V2::system_clock::time_point now);
   int press_a_key(void);
 
