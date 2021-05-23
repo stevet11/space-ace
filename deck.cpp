@@ -855,7 +855,7 @@ vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
                                    std::string("Magenta"), std::string("Red")};
 /**
  * @brief menu render that sets the text color based on the color found in the
- * text itself.
+ * text itself.  This only finds one color.
  *
  * @param c1 [] brackets
  * @param c2 text within brackets
@@ -934,6 +934,142 @@ door::renderFunction makeColorRender(door::ANSIColor c1, door::ANSIColor c2,
     }
     if (co.len != 0) {
       r.outputs.push_back(co);
+    }
+    return r;
+  };
+  return render;
+}
+
+/**
+ * @brief menu render that sets the text color based on the color found in the
+ * text itself.  This finds all colors.
+ *
+ * @param c1 [] brackets
+ * @param c2 text within brackets
+ * @param c3 base color give (we set the FG, we use the BG)
+ * @return door::renderFunction
+ */
+door::renderFunction makeColorsRender(door::ANSIColor c1, door::ANSIColor c2,
+                                      door::ANSIColor c3) {
+  door::renderFunction render = [c1, c2,
+                                 c3](const std::string &txt) -> door::Render {
+    door::Render r(txt);
+
+    // find all of the words here
+    std::vector<std::pair<int, int>> words = find_words(txt);
+    auto words_it = words.begin();
+
+    // option is "[?]" part of the string
+    bool option = true;
+
+    // I need this mutable
+    door::ANSIColor textColor = c3;
+    door::ANSIColor normal = c3;
+
+    normal.setFg(door::COLOR::WHITE);
+    bool color_word = false;
+    std::pair<int, int> word_pair;
+
+    // Color update:
+    /*
+    {
+      std::string found;
+
+      for (auto &dc : deck_colors) {
+        if (txt.find(dc) != string::npos) {
+          found = dc;
+          break;
+        }
+      }
+
+      if (!found.empty()) {
+        if (found == "All") {
+          // handle this some other way.
+          textColor.setFg(door::COLOR::WHITE);
+        } else {
+          door::ANSIColor c = stringToANSIColor(found);
+          textColor.setFg(c.getFg());
+        }
+      }
+    }
+   */
+
+    if (get_logger) {
+      get_logger() << "makeColorsRender() " << txt << std::endl;
+      for (auto word : words) {
+        get_logger() << word.first << "," << word.second << std::endl;
+      }
+    }
+
+    int tpos = 0;
+    for (char const &c : txt) {
+      if (option) {
+        if (c == '[' or c == ']') {
+          r.append(c1);
+          if (c == ']')
+            option = false;
+        } else {
+          r.append(c2);
+        }
+      } else {
+        // Ok, we are out of the options now.
+
+        if (color_word) {
+          // we're in a COLOR word.
+          if (tpos < word_pair.first + word_pair.second)
+            r.append(textColor);
+          else {
+            color_word = false;
+            r.append(normal);
+          }
+        } else {
+          // look for COLOR word.
+          while ((words_it != words.end()) and (words_it->first < tpos)) {
+            if (get_logger) {
+              get_logger() << "tpos " << tpos << "(next words_it)" << std::endl;
+            }
+            ++words_it;
+          }
+
+          if (words_it == words.end()) {
+            // we're out.
+            r.append(normal);
+          } else {
+            if (words_it->first == tpos) {
+              // start of word -- check it!
+              std::string color = txt.substr(words_it->first, words_it->second);
+              bool found = false;
+
+              if (!iequals(color, std::string("ALL")))
+                for (auto &dc : deck_colors) {
+                  if (color.find(dc) != string::npos) {
+                    found = true;
+                    break;
+                  }
+                }
+
+              if (get_logger) {
+                get_logger() << "word: [" << color << "] : deck_colors "
+                             << found << " pos: " << tpos
+                             << " word_start: " << words_it->first << std::endl;
+              }
+
+              if (found) {
+                door::ANSIColor c = stringToANSIColor(color);
+                textColor.setFg(c.getFg());
+                word_pair = *words_it;
+                r.append(textColor);
+                color_word = true;
+              } else {
+                r.append(normal);
+              }
+            } else {
+              r.append(normal);
+            }
+          }
+        }
+      }
+      ++tpos;
     }
     return r;
   };
@@ -1264,11 +1400,11 @@ door::Menu make_deck_menu(void) {
 
   m.setTitle(std::make_unique<door::Line>(mtitle), 1);
 
-  m.setRender(true, makeColorRender(
+  m.setRender(true, makeColorsRender(
                         door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD),
                         door::ANSIColor(door::COLOR::BLUE, door::ATTR::BOLD),
                         door::ANSIColor(door::COLOR::CYAN, door::ATTR::BOLD)));
-  m.setRender(false, makeColorRender(
+  m.setRender(false, makeColorsRender(
                          door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                          door::ATTR::BOLD),
                          door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
@@ -1281,6 +1417,7 @@ door::Menu make_deck_menu(void) {
     char c = (*iter)[0];
     m.addSelection(c, (*iter).c_str());
   }
+  m.addSelection('S', "Yellow Red Blue Green Cyan");
   /*
   m.addSelection('A', "All");
   m.addSelection('B', "Blue");

@@ -9,34 +9,15 @@
 #include <sstream>
 
 /**
- * @brief Allow any card to be played on any other card.
+ * @brief This config option allow any card to be played on any other card.
  *
- * This is for testing BONUS and scoring, etc.
+ * This is for testing BONUS and scoring, etc.  This disables saving of streak.
  *
  */
 #define CHEATER "_CHEAT_YOUR_ASS_OFF"
 
-// static std::function<std::ofstream &(void)> get_logger;
-
-/*
-static int press_a_key(door::Door &door) {
-  door << door::reset << "Press a key to continue...";
-  int r = door.sleep_key(door.inactivity);
-  door << door::nl;
-  return r;
-}
-*/
-
-/*
-In the future, this will probably check to see if they can play today or not, as
-well as displaying a calendar to show what days are available to be played.
-
-For now, it will play today.
-*/
-
 PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
     : door{d}, db{dbd}, rng{r} {
-  get_logger = [this]() -> ofstream & { return door.log(); };
   init_values();
 
   play_day = std::chrono::system_clock::now();
@@ -83,7 +64,7 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
   */
 }
 
-PlayCards::~PlayCards() { get_logger = nullptr; }
+PlayCards::~PlayCards() {}
 
 void PlayCards::init_values(void) {
   // beware of hand=1 !  We might not be playing the first hand here!

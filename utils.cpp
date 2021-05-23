@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <regex>
 
 bool replace(std::string &str, const std::string &from, const std::string &to) {
   size_t start_pos = str.find(from);
@@ -30,4 +31,34 @@ bool file_exists(const char *name) {
 
 void string_toupper(std::string &str) {
   std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+}
+
+/**
+ * @brief Case Insensitive std::string compare
+ *
+ * @param a
+ * @param b
+ * @return true
+ * @return false
+ */
+bool iequals(const std::string &a, const std::string &b) {
+  unsigned int sz = a.size();
+  if (b.size() != sz)
+    return false;
+  for (unsigned int i = 0; i < sz; ++i)
+    if (std::tolower(a[i]) != std::tolower(b[i]))
+      return false;
+  return true;
+}
+
+std::vector<std::pair<int, int>> find_words(const std::string &text) {
+  std::vector<std::pair<int, int>> words;
+  std::regex word("([a-zA-Z]+)");
+
+  for (auto it = std::sregex_iterator(text.begin(), text.end(), word);
+       it != std::sregex_iterator(); ++it) {
+
+    words.push_back(std::make_pair(it->position(), it->length()));
+  }
+  return words;
 }

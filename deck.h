@@ -10,6 +10,30 @@
 #include <vector>
 
 /*
+https://en.wikipedia.org/wiki/Code_page_437
+
+using: \xb0, 0xb1, 0xb2, 0xdb
+OR: \u2591, \u2592, \u2593, \u2588
+
+Like so:
+
+##### #####
+##### #####
+##### #####
+
+Cards:  (Black on White, or Red on White)
+8D### TH###
+##D## ##H##
+###D8 ###HT
+
+D, H = Red, Clubs, Spades = Black.
+
+^ Where D = Diamonds, H = Hearts
+
+♥, ♦, ♣, ♠
+\x03, \x04, \x05, \x06
+\u2665, \u2666, \u2663, \u2660
+
 I tried card_height = 5, but the cards looked a little too stretched out/tall.
 3 looks good.
 

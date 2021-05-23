@@ -23,83 +23,18 @@ door::ANSIColor stringToANSIColor(std::string colorCode);
 std::function<std::ofstream &(void)> get_logger;
 std::function<void(void)> cls_display_starfield;
 
-/*
-unsigned long score = 0;
-int hand = 1;
-int total_hands = 3;
-int card_number = 28;
-int current_streak = 0;
-int best_streak = 0;
-int active_card = 23;
-
-std::chrono::_V2::system_clock::time_point play_day;
-*/
-
-/*
-
-Cards:
-
-4 layers deep.
-
-https://en.wikipedia.org/wiki/Code_page_437
-
-using: \xb0, 0xb1, 0xb2, 0xdb
-OR: \u2591, \u2592, \u2593, \u2588
-
-Like so:
-
-##### #####
-##### #####
-##### #####
-
-Cards:  (Black on White, or Red on White)
-8D### TH###
-##D## ##H##
-###D8 ###HT
-
-D, H = Red, Clubs, Spades = Black.
-
-^ Where D = Diamonds, H = Hearts
-
-♥, ♦, ♣, ♠
-\x03, \x04, \x05, \x06
-\u2665, \u2666, \u2663, \u2660
-
-Card layout.  Actual cards are 3 lines thick.
-
-         ░░░░░             ░░░░░             ░░░░░
-         ░░░░░             ░░░░░             ░░░░░
-      ▒▒▒▒▒░▒▒▒▒▒       #####░#####       #####░#####
-      ▒▒▒▒▒ ▒▒▒▒▒       ##### #####       ##### #####
-   ▓▓▓▓▓▒▓▓▓▓▓▒▓▓▓▓▓ #####=#####=##### #####=#####=#####
-   ▓▓▓▓▓ ▓▓▓▓▓ ▓▓▓▓▓ ##### ##### ##### ##### ##### #####
-█████▓█████▓█████▓#####=#####=#####=#####=#####=#####=#####
-█████ █████ █████ ##### ##### ##### ##### ##### ##### #####
-█████ █████ █████ ##### ##### ##### ##### ##### ##### #####
-
-                           #####
-Player Information         #####        Time in: xx Time out: xx
-Name:                      #####    Playing Day: November 3rd
-Hand Score   :                            Current Streak: N
-Todays Score :      XX Cards Remaining    Longest Streak: NN
-Monthly Score:      Playing Hand X of X   Most Won: xxx Lost: xxx
- [4] Lf [6] Rt  [Space] Play Card [Enter] Draw [D]one [H]elp [R]edraw
-
-►, ◄, ▲, ▼
-\x10, \x11, \x1e, \x1f
-\u25ba, \u25c4, \u25b2, \u25bc
-
-
-The Name is <- 6 to the left.
-
-# is back of card.  = is upper card showing between.
-
-There's no fancy anything here.  Cards overlap the last
-line of the previous line/card.
-
-
+/**
+ * @brief Make renderFunction that colors status: value
+ *
+ * "status:" text is status color, the rest is value color.
+ *
+ * If ":" is not located in the string, text is displayed in status
+ * color, digits are displayed in value color.
+ *
+ * @param status
+ * @param value
+ * @return door::renderFunction
  */
-
 door::renderFunction statusValue(door::ANSIColor status,
                                  door::ANSIColor value) {
   door::renderFunction rf = [status,
@@ -152,39 +87,6 @@ door::renderFunction statusValue(door::ANSIColor status,
   return rf;
 }
 
-/*
-door::renderFunction rStatus = [](const std::string &txt) -> door::Render {
-  door::Render r(txt);
-  door::ColorOutput co;
-
-  // default colors STATUS: value
-  door::ANSIColor status(door::COLOR::BLUE, door::ATTR::BOLD);
-  door::ANSIColor value(door::COLOR::YELLOW, door::ATTR::BOLD);
-
-  co.pos = 0;
-  co.len = 0;
-  co.c = status;
-
-  size_t pos = txt.find(':');
-  if (pos == std::string::npos) {
-    // failed to find - use entire string as status color.
-    co.len = txt.length();
-    r.outputs.push_back(co);
-  } else {
-    pos++; // Have : in status color
-    co.len = pos;
-    r.outputs.push_back(co);
-    co.reset();
-    co.pos = pos;
-    co.c = value;
-    co.len = txt.length() - pos;
-    r.outputs.push_back(co);
-  }
-
-  return r;
-};
-*/
-
 std::string return_current_time_and_date() {
   auto now = std::chrono::system_clock::now();
   auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -200,17 +102,6 @@ int press_a_key(door::Door &door) {
   int r = door.sleep_key(door.inactivity);
   door << door::nl;
   return r;
-}
-
-// DOES THIS WORK?
-bool iequals(const string &a, const string &b) {
-  unsigned int sz = a.size();
-  if (b.size() != sz)
-    return false;
-  for (unsigned int i = 0; i < sz; ++i)
-    if (tolower(a[i]) != tolower(b[i]))
-      return false;
-  return true;
 }
 
 // This does not seem to be working.  I keep getting zero.
