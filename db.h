@@ -64,7 +64,7 @@ public:
   std::vector<monthly_data> getMonthlyScores(int limit = 10);
   std::vector<scores_data> getScores(int limit = 10);
   std::map<time_t, int> getPlayed(void);
-  void expireScores(time_t month_first_t);
+  bool expireScores(time_t month_first_t);
 
   int handsPlayedOnDay(time_t day);
   std::map<time_t, int> whenPlayed(void);

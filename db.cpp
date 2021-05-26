@@ -535,7 +535,7 @@ struct month_stats {
  * @param month_first_t
  *
  */
-void DBData::expireScores(time_t month_first_t) {
+bool DBData::expireScores(time_t month_first_t) {
   // step 1:  aquire lock
   std::ofstream lockfile;
   lockfile.open("db.lock", std::ofstream::out | std::ofstream::app);
@@ -549,7 +549,7 @@ void DBData::expireScores(time_t month_first_t) {
       get_logger() << "db.lock file exists.  Skipping maint." << std::endl;
     }
     lockfile.close();
-    return;
+    return false;
   }
 
   std::map<month_user, month_stats> monthly;
@@ -603,7 +603,7 @@ void DBData::expireScores(time_t month_first_t) {
   // Ok! I have the data that I need!
   if (monthly.empty()) {
     std::remove("db.lock");
-    return;
+    return false;
   }
 
   try {
@@ -662,6 +662,7 @@ void DBData::expireScores(time_t month_first_t) {
   // clean up
 
   std::remove("db.lock");
+  return true;
 }
 
 /**
