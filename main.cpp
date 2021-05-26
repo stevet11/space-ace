@@ -23,70 +23,6 @@ door::ANSIColor stringToANSIColor(std::string colorCode);
 std::function<std::ofstream &(void)> get_logger;
 std::function<void(void)> cls_display_starfield;
 
-/**
- * @brief Make renderFunction that colors status: value
- *
- * "status:" text is status color, the rest is value color.
- *
- * If ":" is not located in the string, text is displayed in status
- * color, digits are displayed in value color.
- *
- * @param status
- * @param value
- * @return door::renderFunction
- */
-door::renderFunction statusValue(door::ANSIColor status,
-                                 door::ANSIColor value) {
-  door::renderFunction rf = [status,
-                             value](const std::string &txt) -> door::Render {
-    door::Render r(txt);
-    door::ColorOutput co;
-
-    co.pos = 0;
-    co.len = 0;
-    co.c = status;
-
-    size_t pos = txt.find(':');
-    if (pos == std::string::npos) {
-      // failed to find :, render digits/numbers in value color
-      int tpos = 0;
-      for (char const &c : txt) {
-        if (std::isdigit(c)) {
-          if (co.c != value) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-            co.c = value;
-          }
-        } else {
-          if (co.c != status) {
-            r.outputs.push_back(co);
-            co.reset();
-            co.pos = tpos;
-            co.c = status;
-          }
-        }
-        co.len++;
-        tpos++;
-      }
-      if (co.len != 0)
-        r.outputs.push_back(co);
-    } else {
-      pos++; // Have : in status color
-      co.len = pos;
-      r.outputs.push_back(co);
-      co.reset();
-      co.pos = pos;
-      co.c = value;
-      co.len = txt.length() - pos;
-      r.outputs.push_back(co);
-    }
-
-    return r;
-  };
-  return rf;
-}
-
 std::string return_current_time_and_date() {
   auto now = std::chrono::system_clock::now();
   auto in_time_t = std::chrono::system_clock::to_time_t(now);
@@ -211,72 +147,6 @@ int configure(door::Door &door, DBData &db) {
   return r;
 }
 
-/*
-door::Panel make_score_panel(door::Door &door) {
-  const int W = 25;
-  door::Panel p(W);
-  p.setStyle(door::BorderStyle::NONE);
-  door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
-                              door::ATTR::BOLD);
-  door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                             door::ATTR::BOLD);
-  door::renderFunction svRender = statusValue(statusColor, valueColor);
-  // or use renderStatus as defined above.
-  // We'll stick with these for now.
-
-  {
-    std::string userString = "Name: ";
-    userString += door.username;
-    door::Line username(userString, W);
-    username.setRender(svRender);
-    p.addLine(std::make_unique<door::Line>(username));
-  }
-  {
-    door::updateFunction scoreUpdate = [](void) -> std::string {
-      std::string text = "Score: ";
-      text.append(std::to_string(score));
-      return text;
-    };
-    std::string scoreString = scoreUpdate();
-    door::Line score(scoreString, W);
-    score.setRender(svRender);
-    score.setUpdater(scoreUpdate);
-    p.addLine(std::make_unique<door::Line>(score));
-  }
-  {
-    door::updateFunction timeUpdate = [&door](void) -> std::string {
-      std::stringstream ss;
-      std::string text;
-      ss << "Time used: " << setw(3) << door.time_used << " / " << setw(3)
-         << door.time_left;
-      text = ss.str();
-      return text;
-    };
-    std::string timeString = timeUpdate();
-    door::Line time(timeString, W);
-    time.setRender(svRender);
-    time.setUpdater(timeUpdate);
-    p.addLine(std::make_unique<door::Line>(time));
-  }
-  {
-    door::updateFunction handUpdate = [](void) -> std::string {
-      std::string text = "Playing Hand ";
-      text.append(std::to_string(hand));
-      text.append(" of ");
-      text.append(std::to_string(total_hands));
-      return text;
-    };
-    std::string handString = handUpdate();
-    door::Line hands(handString, W);
-    hands.setRender(svRender);
-    hands.setUpdater(handUpdate);
-    p.addLine(std::make_unique<door::Line>(hands));
-  }
-
-  return p;
-}
-*/
-
 int main(int argc, char *argv[]) {
 
   door::Door door("space-ace", argc, argv);
@@ -331,13 +201,6 @@ int main(int argc, char *argv[]) {
     update_config = true;
   }
 
-  /*
-    if (config["hands_per_day"]) {
-      get_logger() << "hands_per_day: " << config["hands_per_day"].as<int>()
-                   << std::endl;
-    }
-  */
-
   // save configuration -- something was updated
   if (update_config) {
     std::ofstream fout("space-ace.yaml");
@@ -360,12 +223,18 @@ int main(int argc, char *argv[]) {
     std::chrono::_V2::system_clock::time_point maint_date = now;
     firstOfMonthDate(maint_date);
 
-    spacedb.expireScores(std::chrono::system_clock::to_time_t(maint_date));
+    if (spacedb.expireScores(
+            std::chrono::system_clock::to_time_t(maint_date))) {
+      if (get_logger)
+        get_logger() << "maint completed" << std::endl;
+      door << "Thanks for waiting..." << door::nl;
+    }
   }
 
   // Have they used this door before?
   if (last_call != 0) {
-    door << "Welcome Back!" << door::nl;
+    door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD)
+         << "Welcome Back!" << door::nl;
     auto nowClock = std::chrono::system_clock::from_time_t(now_t);
     auto lastClock = std::chrono::system_clock::from_time_t(last_call);
     auto delta = nowClock - lastClock;
@@ -378,46 +247,28 @@ int main(int argc, char *argv[]) {
     int secs = chrono::duration_cast<chrono::seconds>(delta).count();
 
     if (days > 1) {
-      door << "It's been " << days << " days since you last played."
+      door << door::ANSIColor(door::COLOR::GREEN, door::ATTR::BOLD)
+           << "It's been " << days << " days since you last played."
            << door::nl;
     } else {
       if (hours > 1) {
-        door << "It's been " << hours << " hours since you last played."
-             << door::nl;
+        door << door::ANSIColor(door::COLOR::CYAN) << "It's been " << hours
+             << " hours since you last played." << door::nl;
       } else {
         if (minutes > 1) {
-          door << "It's been " << minutes << " minutes since you last played."
-               << door::nl;
+          door << door::ANSIColor(door::COLOR::CYAN) << "It's been " << minutes
+               << " minutes since you last played." << door::nl;
         } else {
-          door << "It's been " << secs << " seconds since you last played."
+          door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD)
+               << "It's been " << secs << " seconds since you last played."
                << door::nl;
           door << "It's like you never left." << door::nl;
         }
       }
     }
+    door << door::reset;
     press_a_key(door);
   }
-
-  /*
-  // example:  saving the door.log() for global use.
-
-  std::function<std::ofstream &(void)> get_logger;
-
-  get_logger = [&door]() -> ofstream & { return door.log(); };
-
-  if (get_logger) {
-    get_logger() << "MEOW" << std::endl;
-    get_logger() << "hey! It works!" << std::endl;
-  }
-
-  get_logger = nullptr;  // before door destruction
-  */
-
-  // https://stackoverflow.com/questions/5008804/generating-random-integer-from-a-range
-
-  // random-number engine used (Mersenne-Twister in this case)
-  // std::uniform_int_distribution<int> uni(min, max); // guaranteed
-  // unbiased
 
   int mx, my; // Max screen width/height
   if (door.width == 0) {
@@ -439,9 +290,12 @@ int main(int argc, char *argv[]) {
   door::Panel timeout = make_timeout(mx, my);
   door::Menu m = make_main_menu();
   door::Panel about = make_about(); // 8 lines
+  door::Panel help = make_help();
 
   // center the about box
   about.set((mx - 60) / 2, (my - 9) / 2);
+  // center the help box
+  help.set((mx - 60) / 2, (my - 15) / 2);
 
   int r = 0;
   while ((r >= 0) and (r != 6)) {
@@ -503,7 +357,8 @@ int main(int argc, char *argv[]) {
       break;
 
     case 4: // help
-      door << "Help!  Need some help here..." << door::nl;
+      display_starfield(door, rng);
+      door << help << door::nl;
       r = press_a_key(door);
       break;
 

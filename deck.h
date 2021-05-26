@@ -165,6 +165,7 @@ door::ANSIColor stringToANSIColor(std::string colorCode);
 std::string stringFromColorOptions(int opt);
 
 door::Panel make_about(void);
+door::Panel make_help(void);
 void display_starfield(door::Door &door, std::mt19937 &rng);
 void display_space_ace(door::Door &door);
 void display_starfield_space_ace(door::Door &door, std::mt19937 &rng);

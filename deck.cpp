@@ -1145,25 +1145,61 @@ door::Panel make_about(void) {
       std::make_unique<door::Line>("This door was written by Bugz.", W));
   about.addLine(std::make_unique<door::Line>("", W));
   about.addLine(std::make_unique<door::Line>(
-      "It is written in door++, using c++, only support Linux.", W));
-
-  /*
-    door::updateFunction updater = [](void) -> std::string {
-      std::string text = "Currently: ";
-      text.append(return_current_time_and_date());
-      return text;
-    };
-    std::string current = updater();
-    door::Line active(current, 60);
-    active.setUpdater(updater);
-    active.setRender(statusValue(
-        door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE,
-    door::ATTR::BOLD), door::ANSIColor(door::COLOR::YELLOW,
-    door::COLOR::BLUE, door::ATTR::BOLD)));
-    about.addLine(std::make_unique<door::Line>(active));
-  */
-
+      "It is written in door++ using c++ and only supports Linux.", W));
   return about;
+}
+
+door::Panel make_help(void) {
+  const int W = 60;
+  door::Panel help(W);
+  help.setStyle(door::BorderStyle::DOUBLE_SINGLE);
+  help.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
+                                door::ATTR::BOLD));
+
+  help.addLine(std::make_unique<door::Line>("Help", W));
+  help.addLine(std::make_unique<door::Line>(
+      "---------------------------------", W,
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
+  /*
+  123456789012345678901234567890123456789012345678901234567890-60
+
+  Use Left/Right arrow keys, or 4/6 keys to move marker.
+  Select card to play with Space or 5.  Enter draws another card.
+  A card can play if it is higher or lower in rank by 1.
+
+  Example: A Jack could select either a Ten or a Queen.
+  Example: A King could select either an Ace or a Queen.
+
+
+  The more cards in your streak, the more points you earn.
+
+   */
+  help.addLine(std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W));
+  std::string copyright = SPACEACE_COPYRIGHT;
+  if (door::unicode) {
+    replace(copyright, "(C)", "\u00a9");
+  }
+
+  help.addLine(std::make_unique<door::Line>(copyright, W));
+  help.addLine(std::make_unique<door::Line>("", W));
+  help.addLine(std::make_unique<door::Line>(
+      "Use Left/Right arrow keys, or 4/6 keys to move marker.", W));
+  help.addLine(
+      std::make_unique<door::Line>("Select card to play with Space or 5.", W));
+
+  help.addLine(std::make_unique<door::Line>(
+      "A card can play if it is higher or lower in rank by 1.", W));
+  help.addLine(std::make_unique<door::Line>("", W));
+  help.addLine(std::make_unique<door::Line>("Enter draws another card.", W));
+  help.addLine(std::make_unique<door::Line>("", W));
+  help.addLine(std::make_unique<door::Line>(
+      "Example: A Jack could select either a Ten or a Queen.", W));
+  help.addLine(std::make_unique<door::Line>(
+      "Example: A King could select either an Ace or a Queen.", W));
+  help.addLine(std::make_unique<door::Line>("", W));
+  help.addLine(std::make_unique<door::Line>(
+      "The more cards in your streak, the more points you earn.", W));
+  return help;
 }
 
 void display_starfield(door::Door &door, std::mt19937 &rng) {
@@ -1417,7 +1453,10 @@ door::Menu make_deck_menu(void) {
     char c = (*iter)[0];
     m.addSelection(c, (*iter).c_str());
   }
-  m.addSelection('S', "Yellow Red Blue Green Cyan");
+
+  // This verifies the render routine is working great.
+  // Now, I just need to support multiple color selections like this.
+  // m.addSelection('S', "Yellow Red Blue Green Cyan");
   /*
   m.addSelection('A', "All");
   m.addSelection('B', "Blue");

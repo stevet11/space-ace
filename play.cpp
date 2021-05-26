@@ -131,10 +131,14 @@ int PlayCards::play(void) {
 
   if (played == 0) {
     // playing today
+    door << "Let's play today..." << door::nl;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     hand = 1;
     return play_cards();
   } else {
     if (played < total_hands) {
+      door << "Let's finish today..." << door::nl;
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       hand = played + 1;
       return play_cards();
     }
@@ -170,8 +174,13 @@ int PlayCards::play(void) {
   }
 
   door << door::nl;
-  door << "Choose, eh? ";
+  door << "Please choose day : " << door::SaveCursor;
+
+AGAIN:
+
   std::string toplay = door.input_string(3);
+
+  door << door::RestoreCursor;
 
   int number;
   try {
@@ -182,6 +191,7 @@ int PlayCards::play(void) {
 
   if (number == 0)
     return ' ';
+
   int status;
   if (get_logger)
     get_logger() << "number " << number;
@@ -207,7 +217,10 @@ int PlayCards::play(void) {
         return play_cards();
       }
     }
+    goto AGAIN;
   };
+
+  return ' ';
 
   int r = press_a_key();
   if (r < 0) // timeout!  exit!
