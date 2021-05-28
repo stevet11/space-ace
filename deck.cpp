@@ -19,22 +19,7 @@ Deck::Deck(door::ANSIColor backcolor) : card_back_color{backcolor} {
   mark.push_back(markOf(1));
 }
 
-Deck::~Deck() {
-  /*
-  for (auto c : cards) {
-    delete c;
-  }
-  cards.clear();
-  for (auto b : backs) {
-    delete b;
-  }
-  backs.clear();
-  for (auto m : mark) {
-    delete m;
-  }
-  mark.clear();
-  */
-}
+Deck::~Deck() {}
 
 Deck::Deck(Deck &&ref) {
   card_back_color = ref.card_back_color;

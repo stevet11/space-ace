@@ -129,24 +129,47 @@ int PlayCards::play(void) {
                  << std::endl;
   }
 
+  int r;
+
   if (played == 0) {
     // playing today
     door << "Let's play today..." << door::nl;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     hand = 1;
-    return play_cards();
+    r = play_cards();
+    if (get_logger) {
+      get_logger() << __FILE__ << " @ " << __LINE__ << " play_cards() returned "
+                   << r << std::endl;
+    }
+    if (r != 'D')
+      return r;
   } else {
     if (played < total_hands) {
       door << "Let's finish today..." << door::nl;
       std::this_thread::sleep_for(std::chrono::seconds(1));
       hand = played + 1;
-      return play_cards();
+      r = play_cards();
+      if (get_logger) {
+        get_logger() << __FILE__ << " @ " << __LINE__
+                     << " play_cards() returned " << r << std::endl;
+      }
+      if (r != 'D')
+        return r;
     }
   }
 
   // Ok, we need to select a day.
 
   std::unique_ptr<door::Screen> calendar = make_calendar();
+
+  if (false) {
+  CALENDAR_UPDATE:
+    if (get_logger) {
+      get_logger() << "update calendar days" << std::endl;
+    }
+    update_calendar_days();
+    calendar->update();
+  }
 
   if (cls_display_starfield)
     cls_display_starfield();
@@ -167,7 +190,7 @@ int PlayCards::play(void) {
   if (!has_playable_day) {
     door << door::nl;
     door << "Sorry, there are no days available to play." << door::nl;
-    int r = press_a_key();
+    r = press_a_key();
     if (r < 0)
       return r;
     return 'Q';
@@ -194,7 +217,7 @@ AGAIN:
 
   int status;
   if (get_logger)
-    get_logger() << "number " << number;
+    get_logger() << "number " << number << " ";
   if (number <= 31) {
     status = calendar_day_status[number - 1];
     if (get_logger)
@@ -205,7 +228,14 @@ AGAIN:
       hand = 1;
       play_day_t = calendar_day_t[number - 1];
       play_day = std::chrono::system_clock::from_time_t(play_day_t);
-      return play_cards();
+      r = play_cards();
+      if (get_logger) {
+        get_logger() << __FILE__ << " @ " << __LINE__
+                     << " play_cards() returned " << r << std::endl;
+      }
+      if (r == 'D')
+        goto CALENDAR_UPDATE;
+      return r;
     }
     if (status == 1) {
       // play half day
@@ -214,7 +244,14 @@ AGAIN:
       played = db.handsPlayedOnDay(play_day_t);
       if (played < total_hands) {
         hand = played + 1;
-        return play_cards();
+        r = play_cards();
+        if (get_logger) {
+          get_logger() << __FILE__ << " @ " << __LINE__
+                       << " play_cards() returned " << r << std::endl;
+        }
+        if (r == 'D')
+          goto CALENDAR_UPDATE;
+        return r;
       }
     }
     goto AGAIN;
@@ -222,7 +259,7 @@ AGAIN:
 
   return ' ';
 
-  int r = press_a_key();
+  r = press_a_key();
   if (r < 0) // timeout!  exit!
     return r;
 
@@ -1425,21 +1462,32 @@ PlayCards::current_month(std::chrono::_V2::system_clock::time_point now) {
   return text;
 }
 
-void PlayCards::update_calendar_days(time_t month_t) {
+/**
+ * @brief Update the calendar with days played so far.
+ *
+ * This is before redisplaying the calendar.
+ *
+ */
+void PlayCards::update_calendar_days(void) {
+  time_t month_t = calendar_day_t[0];
   std::tm month_lt;
   localtime_r(&month_t, &month_lt);
 
   int this_month = month_lt.tm_mon;
-  int this_day = month_lt.tm_mday;
+  // int this_day = month_lt.tm_mday;
   int this_year = month_lt.tm_year + 1900;
-  calendar_day_status.fill(0);
+
+  // calendar_day_status.fill(0);
 
   auto last_played = db.whenPlayed();
+
+  /*
   int play_days_ahead = 0;
 
   if (config["play_days_ahead"]) {
     play_days_ahead = config["play_days_ahead"].as<int>();
   }
+  */
 
   // until maint is setup, we need to verify that the month and year is
   // correct.
@@ -1468,12 +1516,14 @@ void PlayCards::update_calendar_days(time_t month_t) {
     }
   }
 
+  /*
   // mark days ahead as NNY.
   for (int d = 0; d < month_last_day; ++d) {
     if (this_day + play_days_ahead - 1 < d) {
       calendar_day_status[d] = 3;
     }
   }
+  */
 }
 
 /**
