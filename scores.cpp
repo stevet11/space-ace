@@ -1,8 +1,9 @@
 #include "scores.h"
 
 #include "utils.h"
-#include <iomanip> // setw
-#include <sstream> // ostringstream
+#include <algorithm> // max
+#include <iomanip>   // setw
+#include <sstream>   // ostringstream
 
 door::renderFunction scoresRender(door::ANSIColor date, int dlen,
                                   door::ANSIColor nick, int nlen,
@@ -22,7 +23,7 @@ door::renderFunction scoresRender(door::ANSIColor date, int dlen,
 
 std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   const int W = 38;
-  door::COLOR panel_bg = door::COLOR::MAGENTA;
+  door::COLOR panel_bg = door::COLOR::BLUE;
   door::ANSIColor panel_color =
       door::ANSIColor(door::COLOR::CYAN, panel_bg); //, door::ATTR::BOLD);
   door::ANSIColor heading_color = panel_color;
@@ -37,8 +38,8 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   p->setColor(panel_color);
 
   std::unique_ptr<door::Line> heading =
-      std::make_unique<door::Line>("The TOP Monthly Scores:", W);
-  heading->setColor(heading_color);
+      std::make_unique<door::Line>("The TOP Monthly Scores:", W, heading_color);
+  // heading->setColor(heading_color);
   p->addLine(std::move(heading));
 
   std::unique_ptr<door::Line> spacer = p->spacer_line(false);
@@ -49,8 +50,8 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   if (monthly_scores.empty()) {
     // No Monthly Scores
     std::unique_ptr<door::Line> heading =
-        std::make_unique<door::Line>("No, Not Yet!", W);
-    heading->setColor(heading_color);
+        std::make_unique<door::Line>("No, Not Yet!", W, heading_color);
+    // heading->setColor(heading_color);
     p->addLine(std::move(heading));
   }
 
@@ -61,9 +62,11 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   std::string longest_date = convertDateToMonthlyFormat(longest);
   int longest_month = longest_date.size();
 
+#ifdef DEBUG_OUTPUT
   if (get_logger)
     get_logger() << "longest_date: " << longest_date << " " << longest_month
                  << std::endl;
+#endif
 
   door::ANSIColor nick = panel_color;
   nick.setFg(door::COLOR::CYAN);
@@ -106,7 +109,7 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
 
 std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   const int W = 30;
-  door::COLOR panel_bg = door::COLOR::BROWN;
+  door::COLOR panel_bg = door::COLOR::BLUE;
   door::ANSIColor panel_color =
       door::ANSIColor(door::COLOR::CYAN, panel_bg); // , door::ATTR::BOLD);
   door::ANSIColor heading_color =
@@ -126,8 +129,9 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
     text += convertDateToMonthlyFormat(date);
     text += ":";
   }
-  std::unique_ptr<door::Line> heading = std::make_unique<door::Line>(text, W);
-  heading->setColor(heading_color);
+  std::unique_ptr<door::Line> heading =
+      std::make_unique<door::Line>(text, W, heading_color);
+  // heading->setColor(heading_color);
   p->addLine(std::move(heading));
 
   std::unique_ptr<door::Line> spacer = p->spacer_line(false);
@@ -138,8 +142,8 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   if (monthly_scores.empty()) {
     // No Monthly Scores
     std::unique_ptr<door::Line> heading =
-        std::make_unique<door::Line>("No, Not Yet!", W);
-    heading->setColor(heading_color);
+        std::make_unique<door::Line>("No, Not Yet!", W, heading_color);
+    // heading->setColor(heading_color);
     p->addLine(std::move(heading));
   }
 
@@ -148,10 +152,13 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   time_t longest = 1631280600; // 9/10/2021 9:30:10
   std::string longest_date = convertDateToMonthDayFormat(longest);
   int longest_month = longest_date.size();
+
+#ifdef DEBUG_OUTPUT
   if (get_logger)
     get_logger() << __FILE__ << "@" << __LINE__
                  << " longest_date: " << longest_date << " " << longest_month
                  << std::endl;
+#endif
 
   door::ANSIColor nick = panel_color;
   nick.setFg(door::COLOR::CYAN);
@@ -202,9 +209,10 @@ void Scores::display_scores(door::Door &door) {
 
   int mx = door.width;
   int my = door.height;
+  int h = std::max(top_scores->getHeight(), top_this_month->getHeight());
 
   int padx = (mx - (top_scores->getWidth() + top_this_month->getWidth())) / 3;
-  int pady = (my - (15 + 2)) / 2;
+  int pady = (my - h) / 2;
   top_scores->set(padx, pady);
   door << *top_scores;
   top_this_month->set(padx * 2 + top_scores->getWidth(), pady);

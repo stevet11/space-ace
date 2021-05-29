@@ -835,9 +835,10 @@ int findClosestActiveCard(const cards &states, int current) {
   return pos;
 }
 
-vector<std::string> deck_colors = {std::string("All"),     std::string("Blue"),
-                                   std::string("Cyan"),    std::string("Green"),
-                                   std::string("Magenta"), std::string("Red")};
+vector<std::string> deck_colors = {std::string("All"),   std::string("Blue"),
+                                   std::string("Brown"), std::string("Cyan"),
+                                   std::string("Green"), std::string("Magenta"),
+                                   std::string("Red"),   std::string("White")};
 /**
  * @brief menu render that sets the text color based on the color found in the
  * text itself.  This only finds one color.
@@ -955,36 +956,14 @@ door::renderFunction makeColorsRender(door::ANSIColor c1, door::ANSIColor c2,
     bool color_word = false;
     std::pair<int, int> word_pair;
 
-    // Color update:
-    /*
-    {
-      std::string found;
-
-      for (auto &dc : deck_colors) {
-        if (txt.find(dc) != string::npos) {
-          found = dc;
-          break;
-        }
-      }
-
-      if (!found.empty()) {
-        if (found == "All") {
-          // handle this some other way.
-          textColor.setFg(door::COLOR::WHITE);
-        } else {
-          door::ANSIColor c = stringToANSIColor(found);
-          textColor.setFg(c.getFg());
-        }
-      }
-    }
-   */
-
+#ifdef DEBUG_OUTPUT
     if (get_logger) {
       get_logger() << "makeColorsRender() " << txt << std::endl;
       for (auto word : words) {
         get_logger() << word.first << "," << word.second << std::endl;
       }
     }
+#endif
 
     int tpos = 0;
     for (char const &c : txt) {
@@ -1010,9 +989,11 @@ door::renderFunction makeColorsRender(door::ANSIColor c1, door::ANSIColor c2,
         } else {
           // look for COLOR word.
           while ((words_it != words.end()) and (words_it->first < tpos)) {
+#ifdef DEBUG_OUTPUT
             if (get_logger) {
               get_logger() << "tpos " << tpos << "(next words_it)" << std::endl;
             }
+#endif
             ++words_it;
           }
 
@@ -1033,15 +1014,22 @@ door::renderFunction makeColorsRender(door::ANSIColor c1, door::ANSIColor c2,
                   }
                 }
 
+#ifdef DEBUG_OUTPUT
               if (get_logger) {
                 get_logger() << "word: [" << color << "] : deck_colors "
                              << found << " pos: " << tpos
                              << " word_start: " << words_it->first << std::endl;
               }
+#endif
 
               if (found) {
                 door::ANSIColor c = stringToANSIColor(color);
                 textColor.setFg(c.getFg());
+                // check
+                if (textColor.getFg() == textColor.getBg()) {
+                  // problem detected!
+                  textColor.setBg(door::COLOR::WHITE);
+                }
                 word_pair = *words_it;
                 r.append(textColor);
                 color_word = true;
@@ -1067,10 +1055,12 @@ door::renderFunction makeColorsRender(door::ANSIColor c1, door::ANSIColor c2,
 door::ANSIColor stringToANSIColor(std::string colorCode) {
   std::map<std::string, door::ANSIColor> codeMap = {
       {std::string("BLUE"), door::ANSIColor(door::COLOR::BLUE)},
+      {std::string("BROWN"), door::ANSIColor(door::COLOR::BROWN)},
       {std::string("RED"), door::ANSIColor(door::COLOR::RED)},
       {std::string("CYAN"), door::ANSIColor(door::COLOR::CYAN)},
       {std::string("GREEN"), door::ANSIColor(door::COLOR::GREEN)},
-      {std::string("MAGENTA"), door::ANSIColor(door::COLOR::MAGENTA)}};
+      {std::string("MAGENTA"), door::ANSIColor(door::COLOR::MAGENTA)},
+      {std::string("WHITE"), door::ANSIColor(door::COLOR::WHITE)}};
 
   std::string code = colorCode;
   string_toupper(code);

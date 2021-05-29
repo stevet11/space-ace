@@ -124,10 +124,12 @@ int PlayCards::play(void) {
   time_t play_day_t = std::chrono::system_clock::to_time_t(play_day);
   int played = db.handsPlayedOnDay(play_day_t);
 
+#ifdef DEBUG_OUTPUT
   if (get_logger) {
     get_logger() << "played today (" << play_day_t << ")= " << played
                  << std::endl;
   }
+#endif
 
   int r;
 
@@ -137,10 +139,6 @@ int PlayCards::play(void) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     hand = 1;
     r = play_cards();
-    if (get_logger) {
-      get_logger() << __FILE__ << " @ " << __LINE__ << " play_cards() returned "
-                   << r << std::endl;
-    }
     if (r != 'D')
       return r;
   } else {
@@ -149,10 +147,6 @@ int PlayCards::play(void) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       hand = played + 1;
       r = play_cards();
-      if (get_logger) {
-        get_logger() << __FILE__ << " @ " << __LINE__
-                     << " play_cards() returned " << r << std::endl;
-      }
       if (r != 'D')
         return r;
     }
@@ -216,12 +210,8 @@ AGAIN:
     return ' ';
 
   int status;
-  if (get_logger)
-    get_logger() << "number " << number << " ";
   if (number <= 31) {
     status = calendar_day_status[number - 1];
-    if (get_logger)
-      get_logger() << "status " << status << std::endl;
 
     if (status == 0) {
       // play full day -- how do I figure out the date for this?
@@ -229,10 +219,6 @@ AGAIN:
       play_day_t = calendar_day_t[number - 1];
       play_day = std::chrono::system_clock::from_time_t(play_day_t);
       r = play_cards();
-      if (get_logger) {
-        get_logger() << __FILE__ << " @ " << __LINE__
-                     << " play_cards() returned " << r << std::endl;
-      }
       if (r == 'D')
         goto CALENDAR_UPDATE;
       return r;
@@ -245,10 +231,6 @@ AGAIN:
       if (played < total_hands) {
         hand = played + 1;
         r = play_cards();
-        if (get_logger) {
-          get_logger() << __FILE__ << " @ " << __LINE__
-                       << " play_cards() returned " << r << std::endl;
-        }
         if (r == 'D')
           goto CALENDAR_UPDATE;
         return r;
@@ -258,21 +240,6 @@ AGAIN:
   };
 
   return ' ';
-
-  r = press_a_key();
-  if (r < 0) // timeout!  exit!
-    return r;
-
-  // return 0;
-  /*
-    hand = 1;
-    // possibly init_values()
-
-    play_day = std::chrono::system_clock::now();
-    normalizeDate(play_day);
-    return play_cards();
-    */
-  return r;
 }
 
 /**
@@ -1492,16 +1459,20 @@ void PlayCards::update_calendar_days(void) {
   // until maint is setup, we need to verify that the month and year is
   // correct.
   for (auto played : last_played) {
+#ifdef DEBUG_OUTPUT
     get_logger() << "played " << played.first << " hands: " << played.second
                  << std::endl;
+#endif
     time_t play_t = played.first;
     std::tm played_tm;
     localtime_r(&play_t, &played_tm);
+#ifdef DEBUG_OUTPUT
     if (get_logger) {
       get_logger() << played_tm.tm_mon + 1 << "/" << played_tm.tm_mday << "/"
                    << played_tm.tm_year + 1900 << " : " << played.second << " "
                    << play_t << std::endl;
     }
+#endif
     if ((played_tm.tm_mon == this_month) &&
         (played_tm.tm_year + 1900 == this_year)) {
       // Ok!
@@ -1515,15 +1486,6 @@ void PlayCards::update_calendar_days(void) {
       }
     }
   }
-
-  /*
-  // mark days ahead as NNY.
-  for (int d = 0; d < month_last_day; ++d) {
-    if (this_day + play_days_ahead - 1 < d) {
-      calendar_day_status[d] = 3;
-    }
-  }
-  */
 }
 
 /**
@@ -1560,13 +1522,17 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   calendar_day_t.fill(0);
   calendar_day_t[0] = month_t;
 
+#ifdef DEBUG_OUTPUT
   get_logger() << "1st of Month is "
                << std::put_time(std::localtime(&month_t), "%c %Z") << std::endl;
+#endif
 
   localtime_r(&month_t, &month_lt);
   const int FIRST_WEEKDAY = month_lt.tm_wday; // 0-6
 
+#ifdef DEBUG_OUTPUT
   get_logger() << "1st of the Month starts on " << FIRST_WEEKDAY << std::endl;
+#endif
 
   // find the last day of this month.
   auto month_l = month;
@@ -1584,21 +1550,9 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     }
   } while (mld_tm.tm_mday != 1);
 
-  /*
-    // increment the month, if > 11 (we've entered a new year)
-    mld_tm.tm_mon += 1;
-    if (mld_tm.tm_mon > 11) {
-      mld_tm.tm_mon = 0;
-      mld_tm.tm_year++;
-    }
-    month_last_day_t = std::mktime(&mld_tm);
-    // Ok, this should be the 1st of next month.
-    month_last_day_t -= (60 * 60 * 24);
-    localtime_r(&month_last_day_t, &mld_tm);
-    month_last_day = mld_tm.tm_mday;
-    */
-
+#ifdef DEBUG_OUTPUT
   get_logger() << "Last day is " << month_last_day << std::endl;
+#endif
 
   calendar_panel_days.fill(0);
 
@@ -1611,7 +1565,7 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     get_logger() << "x = " << x << " dow = " << dow << " row = " << row
                << std::endl;
     */
-    // we actually want x+1 (1- month_last_day)
+    // we actually want x+1 (1 to month_last_day)
     // get_logger() << row * 7 + dow << " = " << x + 1 << std::endl;
     calendar_panel_days[row * 7 + dow] = x + 1;
   }
@@ -1629,24 +1583,30 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   // until maint is setup, we need to verify that the month and year is
   // correct.
   for (auto played : last_played) {
+#ifdef DEBUG_OUTPUT
     get_logger() << "played " << played.first << " hands: " << played.second
                  << std::endl;
+#endif
     time_t play_t = played.first;
     std::tm played_tm;
     localtime_r(&play_t, &played_tm);
+#ifdef DEBUG_OUTPUT
     if (get_logger) {
       get_logger() << played_tm.tm_mon + 1 << "/" << played_tm.tm_mday << "/"
                    << played_tm.tm_year + 1900 << " : " << played.second << " "
                    << play_t << std::endl;
     }
+#endif
     if ((played_tm.tm_mon == this_month) &&
         (played_tm.tm_year + 1900 == this_year)) {
       // Ok!
       int hands = played.second;
+#ifdef DEBUG_OUTPUT
       if (get_logger) {
         get_logger() << "hands " << hands << " total " << total_hands
                      << std::endl;
       }
+#endif
       if (hands < total_hands) {
         calendar_day_status[played_tm.tm_mday - 1] = 1;
       } else {
@@ -1657,10 +1617,12 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     }
   }
 
+#ifdef DEBUG_OUTPUT
   if (get_logger) {
     get_logger() << "last day " << month_last_day << " today " << this_day
                  << " plays ahead " << play_days_ahead << std::endl;
   }
+#endif
 
   // mark days ahead as NNY.
   for (int d = 0; d < month_last_day; ++d) {
@@ -1669,7 +1631,9 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     }
   }
 
+#ifdef DEBUG_OUTPUT
   {
+    // output all of the calendar information
     ofstream &of = get_logger();
     of << "Calendar_panel_days:" << std::endl;
 
@@ -1688,6 +1652,7 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
     }
     of << std::endl;
   }
+#endif
 
   std::string current = current_month(month);
   string_toupper(current);
@@ -1706,78 +1671,5 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   p->set(8, 6);
   s->addPanel(std::move(p));
 
-  /*
-  const int W = 72;
-  p->setStyle(door::BorderStyle::NONE);
-
-  // Ok, that is working.  I'm getting the first day of the month.  So...
-
-
-  store the time_t for the date.
-  store the day in the column it needs to be in.
-  store any hands played (pull data from the db).
-
-  seems like this should be its own class, there's a lot of data that is
-  specific just to it.
-  */
-
-  /*
-    door::ANSIColor statusColor(door::COLOR::WHITE, door::COLOR::BLUE,
-                                door::ATTR::BOLD);
-    door::ANSIColor valueColor(door::COLOR::YELLOW, door::COLOR::BLUE,
-                               door::ATTR::BOLD);
-    door::renderFunction svRender = statusValue(statusColor, valueColor);
-    // or use renderStatus as defined above.
-    // We'll stick with these for now.
-
-    {
-      std::string userString = "Name: ";
-      userString += door.username;
-      door::Line username(userString, W);
-      username.setRender(svRender);
-      p->addLine(std::make_unique<door::Line>(username));
-    }
-    {
-      door::updateFunction scoreUpdate = [this](void) -> std::string {
-        std::string text = "Score: ";
-        text.append(std::to_string(score));
-        return text;
-      };
-      std::string scoreString = scoreUpdate();
-      door::Line scoreline(scoreString, W);
-      scoreline.setRender(svRender);
-      scoreline.setUpdater(scoreUpdate);
-      p->addLine(std::make_unique<door::Line>(scoreline));
-    }
-    {
-      door::updateFunction timeUpdate = [this](void) -> std::string {
-        std::stringstream ss;
-        std::string text;
-        ss << "Time used: " << setw(3) << door.time_used << " / " << setw(3)
-           << door.time_left;
-        text = ss.str();
-        return text;
-      };
-      std::string timeString = timeUpdate();
-      door::Line time(timeString, W);
-      time.setRender(svRender);
-      time.setUpdater(timeUpdate);
-      p->addLine(std::make_unique<door::Line>(time));
-    }
-    {
-      door::updateFunction handUpdate = [this](void) -> std::string {
-        std::string text = "Playing Hand ";
-        text.append(std::to_string(hand));
-        text.append(" of ");
-        text.append(std::to_string(total_hands));
-        return text;
-      };
-      std::string handString = handUpdate();
-      door::Line hands(handString, W);
-      hands.setRender(svRender);
-      hands.setUpdater(handUpdate);
-      p->addLine(std::make_unique<door::Line>(hands));
-    }
-  */
   return s;
 }
