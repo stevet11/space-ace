@@ -199,8 +199,14 @@ Scores::Scores(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
 void Scores::display_scores(door::Door &door) {
   if (cls_display_starfield)
     cls_display_starfield();
-  top_scores->set(1, 5);
+
+  int mx = door.width;
+  int my = door.height;
+
+  int padx = (mx - (top_scores->getWidth() + top_this_month->getWidth())) / 3;
+  int pady = (my - (15 + 2)) / 2;
+  top_scores->set(padx, pady);
   door << *top_scores;
-  top_this_month->set(44, 5);
+  top_this_month->set(padx * 2 + top_scores->getWidth(), pady);
   door << *top_this_month << door::reset << door::nl;
 }
