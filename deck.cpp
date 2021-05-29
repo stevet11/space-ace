@@ -1089,19 +1089,15 @@ std::string stringFromColorOptions(int opt) { return deck_colors[opt]; }
 door::Panel make_about(void) {
   const int W = 60;
   door::Panel about(W);
-  about.setStyle(door::BorderStyle::DOUBLE_SINGLE);
+  about.setStyle(door::BorderStyle::SINGLE_DOUBLE);
   about.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                  door::ATTR::BOLD));
 
-  about.addLine(std::make_unique<door::Line>("About This Door", W));
-  /*
   about.addLine(std::make_unique<door::Line>(
-      "---------------------------------", W,
+      "About This Door", W,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
-*/
-  std::unique_ptr<door::Line> spacer = about.spacer_line(false);
-  spacer->setColor(
-      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD));
+
+  std::unique_ptr<door::Line> spacer = about.spacer_line(true); // false);
   about.addLine(std::move(spacer));
 
   /*
@@ -1141,16 +1137,10 @@ door::Panel make_help(void) {
   help.setStyle(door::BorderStyle::DOUBLE_SINGLE);
   help.setColor(door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE,
                                 door::ATTR::BOLD));
-
-  help.addLine(std::make_unique<door::Line>("Help", W));
-  /*
   help.addLine(std::make_unique<door::Line>(
-      "---------------------------------", W,
+      "Help", W,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
-  */
   std::unique_ptr<door::Line> spacer = help.spacer_line(false);
-  spacer->setColor(
-      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD));
   help.addLine(std::move(spacer));
 
   // help.addLine(p.spacer_line)
