@@ -1094,9 +1094,16 @@ door::Panel make_about(void) {
                                  door::ATTR::BOLD));
 
   about.addLine(std::make_unique<door::Line>("About This Door", W));
+  /*
   about.addLine(std::make_unique<door::Line>(
       "---------------------------------", W,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
+*/
+  std::unique_ptr<door::Line> spacer = about.spacer_line(false);
+  spacer->setColor(
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD));
+  about.addLine(std::move(spacer));
+
   /*
   123456789012345678901234567890123456789012345678901234567890-60
   This door was written by Bugz.
@@ -1133,9 +1140,17 @@ door::Panel make_help(void) {
                                 door::ATTR::BOLD));
 
   help.addLine(std::make_unique<door::Line>("Help", W));
+  /*
   help.addLine(std::make_unique<door::Line>(
       "---------------------------------", W,
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD)));
+  */
+  std::unique_ptr<door::Line> spacer = help.spacer_line(false);
+  spacer->setColor(
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD));
+  help.addLine(std::move(spacer));
+
+  // help.addLine(p.spacer_line)
   /*
   123456789012345678901234567890123456789012345678901234567890-60
 
