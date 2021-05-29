@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "version.h"
 #include <algorithm>
+#include <iomanip> // setw
 #include <map>
 #include <sstream>
 
@@ -1442,4 +1443,41 @@ door::Menu make_deck_menu(void) {
   */
 
   return m;
+}
+
+#include "play.h" // statusValue
+
+door::Panel make_sysop_config(void) {
+  const int W = 35;
+  door::Panel p(5, 5, W);
+  p.setStyle(door::BorderStyle::DOUBLE);
+  door::ANSIColor panel_color =
+      door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD);
+  p.setColor(panel_color);
+  p.addLine(
+      std::make_unique<door::Line>("Game Settings - SysOp Configurable", W));
+  std::unique_ptr<door::Line> spacer = p.spacer_line(false);
+  spacer->setColor(panel_color);
+  p.addLine(std::move(spacer));
+
+  ostringstream oss;
+
+  door::renderFunction rf = statusValue(
+      door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLUE, door::ATTR::BOLD),
+      door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLUE, door::ATTR::BOLD));
+
+  for (auto cfg : config) {
+    std::string key = cfg.first.as<std::string>();
+    if (key[0] == '_')
+      continue;
+    // Replace _ with space.
+    while (replace(key, "_", " ")) {
+    };
+    std::string value = cfg.second.as<std::string>();
+    oss << std::setw(20) << key << " : " << value;
+    p.addLine(std::make_unique<door::Line>(oss.str(), W, rf));
+    oss.clear();
+    oss.str(std::string());
+  }
+  return p;
 }

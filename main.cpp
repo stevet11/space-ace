@@ -112,29 +112,11 @@ int configure(door::Door &door, DBData &db) {
           cls_display_starfield();
         else
           door << door::reset << door::cls;
-        door << door::Goto(1, 1);
 
-        door << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK)
-             << "Game Settings - SysOp Configurable" << door::reset << door::nl
-             << door::nl;
-        for (auto cfg : config) {
-          std::string key = cfg.first.as<std::string>();
-          if (key[0] == '_')
-            continue;
-          // TODO: replace _ with ' ' in string.
-          while (replace(key, "_", " ")) {
-          };
-          std::string value = cfg.second.as<std::string>();
-          door << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK,
-                                  door::ATTR::BOLD)
-               << std::setw(20) << key
-               << door::ANSIColor(door::COLOR::YELLOW, door::COLOR::BLACK,
-                                  door::ATTR::BOLD)
-               << " : "
-               << door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLACK,
-                                  door::ATTR::BOLD)
-               << value << door::reset << door::nl;
-        }
+        door::Panel config_panel = make_sysop_config();
+        // config_panel.set(1, 1);
+        door << config_panel << door::reset << door::nl;
+
         r = press_a_key(door);
         if (r < 0)
           return r;

@@ -820,8 +820,8 @@ void PlayCards::redraw(bool dealing) {
   }
 }
 
-door::renderFunction PlayCards::statusValue(door::ANSIColor status,
-                                            door::ANSIColor value) {
+door::renderFunction statusValue(door::ANSIColor status,
+                                 door::ANSIColor value) {
   door::renderFunction rf = [status,
                              value](const std::string &txt) -> door::Render {
     door::Render r(txt);
@@ -997,9 +997,9 @@ std::unique_ptr<door::Panel> PlayCards::make_left_panel(void) {
   return p;
 }
 
-door::renderFunction PlayCards::commandLineRender(door::ANSIColor bracket,
-                                                  door::ANSIColor inner,
-                                                  door::ANSIColor outer) {
+door::renderFunction commandLineRender(door::ANSIColor bracket,
+                                       door::ANSIColor inner,
+                                       door::ANSIColor outer) {
   door::renderFunction rf = [bracket, inner,
                              outer](const std::string &txt) -> door::Render {
     door::Render r(txt);

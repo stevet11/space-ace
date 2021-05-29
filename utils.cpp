@@ -53,7 +53,8 @@ bool iequals(const std::string &a, const std::string &b) {
 
 std::vector<std::pair<int, int>> find_words(const std::string &text) {
   std::vector<std::pair<int, int>> words;
-  std::regex word("([a-zA-Z]+)");
+  // this is expensive to construct, so only construct it once.
+  static std::regex word("([a-zA-Z]+)");
 
   for (auto it = std::sregex_iterator(text.begin(), text.end(), word);
        it != std::sregex_iterator(); ++it) {

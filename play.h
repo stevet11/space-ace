@@ -82,12 +82,10 @@ public:
 
   int play(void);
   void init_values(void);
-
-  door::renderFunction statusValue(door::ANSIColor status,
-                                   door::ANSIColor value);
-  door::renderFunction commandLineRender(door::ANSIColor bracket,
-                                         door::ANSIColor inner,
-                                         door::ANSIColor outer);
 };
 
+door::renderFunction statusValue(door::ANSIColor status, door::ANSIColor value);
+door::renderFunction commandLineRender(door::ANSIColor bracket,
+                                       door::ANSIColor inner,
+                                       door::ANSIColor outer);
 #endif
