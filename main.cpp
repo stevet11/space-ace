@@ -11,6 +11,7 @@
 #include "db.h"
 #include "deck.h"
 #include "play.h"
+#include "scores.h"
 #include "utils.h"
 #include "version.h"
 #include <algorithm> // transform
@@ -317,6 +318,12 @@ int main(int argc, char *argv[]) {
     case 2: // view scores
     {
       // door << door::cls;
+      Scores score(door, spacedb);
+
+      score.display_scores(door);
+      r = press_a_key(door);
+      break;
+
       display_starfield(door, rng);
       door << door::Goto(1, 2);
 

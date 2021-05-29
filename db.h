@@ -63,6 +63,7 @@ public:
   std::vector<scores_details> getScoresOnDay(time_t date);
   std::vector<monthly_data> getMonthlyScores(int limit = 10);
   std::vector<scores_data> getScores(int limit = 10);
+
   std::map<time_t, int> getPlayed(void);
   bool expireScores(time_t month_first_t);
 
@@ -75,5 +76,6 @@ void normalizeDate(time_t &tt, int hour = 2);
 void firstOfMonthDate(std::chrono::_V2::system_clock::time_point &date);
 std::string convertDateToDateScoreFormat(time_t tt);
 std::string convertDateToMonthlyFormat(time_t tt);
+std::string convertDateToMonthDayFormat(time_t tt);
 
 #endif

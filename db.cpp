@@ -306,7 +306,7 @@ retry:
 }
 
 /**
- * @brief Gets scores, time_t is day, vector has user and scores sorted highest
+ * @brief Gets scores, time_t is day, vector has scores sorted highest
  * to lowest.
  *
  * @return std::map<time_t, std::vector<scores_data>>
@@ -704,6 +704,28 @@ std::string convertDateToMonthlyFormat(time_t tt) {
     ss << std::put_time(std::localtime(&tt), custom_format.c_str());
   } else {
     ss << std::put_time(std::localtime(&tt), "%B %Y");
+  }
+
+  std::string date = ss.str();
+  return date;
+}
+
+/**
+ * @brief Format date to string.
+ *
+ * We use default "%B %0d".
+ * https://en.cppreference.com/w/cpp/io/manip/put_time
+ *
+ * @param tt
+ * @return std::string
+ */
+std::string convertDateToMonthDayFormat(time_t tt) {
+  std::stringstream ss;
+  if (config["date_monthday"]) {
+    std::string custom_format = config["date_monthday"].as<std::string>();
+    ss << std::put_time(std::localtime(&tt), custom_format.c_str());
+  } else {
+    ss << std::put_time(std::localtime(&tt), "%b %Od");
   }
 
   std::string date = ss.str();
