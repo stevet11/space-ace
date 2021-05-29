@@ -53,6 +53,9 @@ int opt_from_string(std::string colorCode) {
 }
 
 int configure(door::Door &door, DBData &db) {
+  // pre-warm the parser
+  find_words(std::string(""));
+
   auto menu = make_config_menu();
   int r = 0;
   bool save_deckcolor = false;
