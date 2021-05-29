@@ -1108,7 +1108,8 @@ door::Panel make_about(void) {
   123456789012345678901234567890123456789012345678901234567890-60
   This door was written by Bugz.
 
-  It is written in c++, only supports Linux, and replaces
+  It is written in c++, supports CP437 and unicode, and can
+  adjust to any size screen, only supports Linux, and replaces
   opendoors.
 
   It's written in c++, and replaces the outdated opendoors
@@ -1128,7 +1129,9 @@ door::Panel make_about(void) {
       std::make_unique<door::Line>("This door was written by Bugz.", W));
   about.addLine(std::make_unique<door::Line>("", W));
   about.addLine(std::make_unique<door::Line>(
-      "It is written in door++ using c++ and only supports Linux.", W));
+      "It is written in door++ using c++, understands CP437 and", W));
+  about.addLine(std::make_unique<door::Line>(
+      "unicode, adapts to screen sizes, and runs on Linux.", W));
   return about;
 }
 
