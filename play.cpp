@@ -152,18 +152,17 @@ int PlayCards::play(void) {
     }
   }
 
-  // Ok, we need to select a day.
+// Ok, we need to select a day.
+// calendar = make_calendar();
 
-  std::unique_ptr<door::Screen> calendar = make_calendar();
-
-  if (false) {
-  CALENDAR_UPDATE:
-    if (get_logger) {
-      get_logger() << "update calendar days" << std::endl;
-    }
-    update_calendar_days();
-    calendar->update();
+// if (false) {
+CALENDAR_UPDATE:
+  if (get_logger) {
+    get_logger() << "update calendar days" << std::endl;
   }
+  update_calendar_days();
+  calendar->update();
+  //}
 
   if (cls_display_starfield)
     cls_display_starfield();
@@ -277,14 +276,17 @@ int PlayCards::play_cards(void) {
   spaceAceTriPeaks->set(tp_off_x, off_y);
   off_y += 3; // adjust for tripeaks panel
 
+  std::string currentDefault = db.getSetting("DeckColor", "ALL");
+
 next_hand:
   // Make sure we pick the deck color here.  We want it to (possibly) change
   // between hands.
-  std::string currentDefault = db.getSetting("DeckColor", "ALL");
+
   get_logger() << "DeckColor shows as " << currentDefault << std::endl;
   deck_color = stringToANSIColor(currentDefault);
 
-  dp = Deck(deck_color);
+  dp.setBack(deck_color);
+  // dp = Deck(deck_color);
 
   play_card = 28;
   select_card = 23;

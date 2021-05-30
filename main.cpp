@@ -283,6 +283,8 @@ int main(int argc, char *argv[]) {
   // center the help box
   help.set((mx - 60) / 2, (my - 15) / 2);
 
+  PlayCards pc(door, spacedb, rng);
+
   int r = 0;
   while ((r >= 0) and (r != 6)) {
     // starfield + menu ?
@@ -295,51 +297,19 @@ int main(int argc, char *argv[]) {
     switch (r) {
     case 1: // play game
     {
-      PlayCards pc(door, spacedb, rng);
+      // PlayCards pc(door, spacedb, rng);
       r = pc.play();
       // r = play_cards(door, spacedb, rng);
     }; break;
 
     case 2: // view scores
-    {
+
       // door << door::cls;
-      Scores score(door, spacedb);
+      {
+        Scores score(door, spacedb);
 
-      score.display_scores(door);
-      r = press_a_key(door);
-      break;
-
-      display_starfield(door, rng);
-      door << door::Goto(1, 2);
-
-      auto monthly_scores = spacedb.getMonthlyScores(10);
-      if (!monthly_scores.empty()) {
-        door << "The TOP monthly Scores:" << door::nl;
+        score.display_scores(door);
       }
-      for (auto it : monthly_scores) {
-        time_t date = it.date;
-        std::string nice_date = convertDateToMonthlyFormat(date);
-        door << nice_date << " " << std::setw(18) << it.user << " " << it.score
-             << door::nl;
-      }
-      door << door::nl;
-
-      // I probably want JUST the top 10 here!
-
-      auto all_scores = spacedb.getScores();
-      if (!all_scores.empty()) {
-        door << "The Top Scores for this Month:" << door::nl;
-      }
-
-      for (auto it : all_scores) {
-
-        std::string nice_date = convertDateToDateScoreFormat(it.date);
-        door << "  *** " << nice_date << setw(15) << it.user << " " << it.won
-             << " " << it.score << door::nl;
-      }
-      door << "====================" << door::nl;
-    }
-
       r = press_a_key(door);
       break;
 
@@ -364,7 +334,6 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-
   if (r < 0) {
     // TIMEOUT:
     if (r == -1) {

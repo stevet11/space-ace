@@ -214,6 +214,13 @@ std::string Deck::backSymbol(int level) {
   return c;
 }
 
+void Deck::setBack(door::ANSIColor backColor) {
+  for (auto &back : backs) {
+    back->lineSetBack(backColor);
+  }
+  card_back_color = backColor;
+}
+
 shared_panel Deck::backOf(int level) {
   // using: \xb0, 0xb1, 0xb2, 0xdb
   // OR:    \u2591, \u2592, \u2593, \u2588

@@ -136,6 +136,7 @@ public:
 
   ~Deck();
 
+  void setBack(door::ANSIColor backcolor);
   int getRank(int c);
   int getSuit(int c);
   int getDeck(int c);
