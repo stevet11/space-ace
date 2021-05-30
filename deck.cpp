@@ -1112,14 +1112,16 @@ door::Panel make_about(void) {
   library.
 
    */
+  door::ANSIColor c_color =
+      door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE, door::ATTR::BOLD);
   about.addLine(
-      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W));
+      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W, c_color));
   std::string copyright = SPACEACE_COPYRIGHT;
   if (door::unicode) {
     replace(copyright, "(C)", "\u00a9");
   }
 
-  about.addLine(std::make_unique<door::Line>(copyright, W));
+  about.addLine(std::make_unique<door::Line>(copyright, W, c_color));
   about.addLine(std::make_unique<door::Line>("", W));
   about.addLine(
       std::make_unique<door::Line>("This door was written by Bugz.", W));
@@ -1158,13 +1160,18 @@ door::Panel make_help(void) {
   The more cards in your streak, the more points you earn.
 
    */
-  help.addLine(std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W));
+
+  door::ANSIColor c_color =
+      door::ANSIColor(door::COLOR::WHITE, door::COLOR::BLUE, door::ATTR::BOLD);
+
+  help.addLine(
+      std::make_unique<door::Line>(SPACEACE " v" SPACEACE_VERSION, W, c_color));
   std::string copyright = SPACEACE_COPYRIGHT;
   if (door::unicode) {
     replace(copyright, "(C)", "\u00a9");
   }
 
-  help.addLine(std::make_unique<door::Line>(copyright, W));
+  help.addLine(std::make_unique<door::Line>(copyright, W, c_color));
   help.addLine(std::make_unique<door::Line>("", W));
   help.addLine(std::make_unique<door::Line>(
       "Use Left/Right arrow keys, or 4/6 keys to move marker.", W));

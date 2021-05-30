@@ -27,11 +27,7 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   door::ANSIColor panel_color =
       door::ANSIColor(door::COLOR::CYAN, panel_bg); //, door::ATTR::BOLD);
   door::ANSIColor heading_color = panel_color;
-  heading_color.setFg(door::COLOR::WHITE, door::ATTR::BOLD);
-  // door::ANSIColor(door::COLOR::WHITE, panel_bg, door::ATTR::BOLD);
-  door::ANSIColor spacer_color = panel_color;
-  spacer_color.setFg(door::COLOR::YELLOW, door::ATTR::BOLD);
-  // door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
+  heading_color.setFg(door::COLOR::GREEN, door::ATTR::BOLD);
 
   std::unique_ptr<door::Panel> p = std::make_unique<door::Panel>(W);
   p->setStyle(door::BorderStyle::DOUBLE);
@@ -43,14 +39,16 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   p->addLine(std::move(heading));
 
   std::unique_ptr<door::Line> spacer = p->spacer_line(false);
-  spacer->setColor(spacer_color);
   p->addLine(std::move(spacer));
 
   auto monthly_scores = db.getMonthlyScores(15);
   if (monthly_scores.empty()) {
     // No Monthly Scores
+    door::ANSIColor nny_color =
+        door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
+
     std::unique_ptr<door::Line> heading =
-        std::make_unique<door::Line>("No, Not Yet!", W, heading_color);
+        std::make_unique<door::Line>("No, Not Yet!", W, nny_color);
     // heading->setColor(heading_color);
     p->addLine(std::move(heading));
   }
@@ -110,12 +108,9 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
 std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   const int W = 30;
   door::COLOR panel_bg = door::COLOR::BLUE;
-  door::ANSIColor panel_color =
-      door::ANSIColor(door::COLOR::CYAN, panel_bg); // , door::ATTR::BOLD);
+  door::ANSIColor panel_color = door::ANSIColor(door::COLOR::CYAN, panel_bg);
   door::ANSIColor heading_color =
-      door::ANSIColor(door::COLOR::WHITE, panel_bg, door::ATTR::BOLD);
-  door::ANSIColor spacer_color =
-      door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
+      door::ANSIColor(door::COLOR::GREEN, panel_bg, door::ATTR::BOLD);
 
   std::unique_ptr<door::Panel> p = std::make_unique<door::Panel>(W);
   p->setStyle(door::BorderStyle::DOUBLE);
@@ -135,14 +130,15 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   p->addLine(std::move(heading));
 
   std::unique_ptr<door::Line> spacer = p->spacer_line(false);
-  spacer->setColor(spacer_color);
   p->addLine(std::move(spacer));
 
   auto monthly_scores = db.getScores(15);
   if (monthly_scores.empty()) {
     // No Monthly Scores
+    door::ANSIColor nny_color =
+        door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
     std::unique_ptr<door::Line> heading =
-        std::make_unique<door::Line>("No, Not Yet!", W, heading_color);
+        std::make_unique<door::Line>("No, Not Yet!", W, nny_color);
     // heading->setColor(heading_color);
     p->addLine(std::move(heading));
   }
@@ -214,7 +210,8 @@ void Scores::display_scores(door::Door &door) {
   int padx = (mx - (top_scores->getWidth() + top_this_month->getWidth())) / 3;
   int pady = (my - h) / 2;
   top_scores->set(padx, pady);
-  door << *top_scores;
+  // display top_this_month, then top_scores.
+  // This gives the press a key prompt a good place to be.
   top_this_month->set(padx * 2 + top_scores->getWidth(), pady);
-  door << *top_this_month << door::reset << door::nl;
+  door << *top_this_month << *top_scores << door::reset << door::nl;
 }
