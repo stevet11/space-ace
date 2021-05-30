@@ -1469,8 +1469,10 @@ door::Panel make_sysop_config(void) {
   door::ANSIColor panel_color =
       door::ANSIColor(door::COLOR::CYAN, door::COLOR::BLUE, door::ATTR::BOLD);
   p.setColor(panel_color);
-  p.addLine(
-      std::make_unique<door::Line>("Game Settings - SysOp Configurable", W));
+  p.addLine(std::make_unique<door::Line>(
+      "Game Settings - SysOp Configurable", W,
+      door::ANSIColor(door::COLOR::GREEN, door::COLOR::BLUE,
+                      door::ATTR::BOLD)));
   std::unique_ptr<door::Line> spacer = p.spacer_line(false);
   spacer->setColor(panel_color);
   p.addLine(std::move(spacer));
