@@ -1626,8 +1626,8 @@ std::unique_ptr<door::Screen> PlayCards::make_calendar() {
   }
 #endif
 
-  // mark days ahead as NNY.
-  for (int d = 0; d < month_last_day; ++d) {
+  // mark all days ahead as NNY.
+  for (int d = 0; d < 31; ++d) {
     if (this_day + play_days_ahead - 1 < d) {
       calendar_day_status[d] = 3;
     }
