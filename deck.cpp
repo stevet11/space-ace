@@ -1182,6 +1182,9 @@ door::Panel make_help(void) {
   help.addLine(std::make_unique<door::Line>("", W));
   help.addLine(std::make_unique<door::Line>(
       "Use Left/Right arrow keys, or 4/6 keys to move marker.", W));
+  help.addLine(std::make_unique<door::Line>(
+      "The marker wraps around the sides of the screen.", W));
+  help.addLine(std::make_unique<door::Line>("", W));
   help.addLine(
       std::make_unique<door::Line>("Select card to play with Space or 5.", W));
 
