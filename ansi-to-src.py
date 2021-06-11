@@ -34,6 +34,8 @@ def my_repr(line):
                 r += '\\"'
             elif c == '?':
                 r += '\\?'
+            elif c == '\\':
+                r += '\\\\'
             else:
                 r += c
     return r    
