@@ -23,6 +23,7 @@ door::ANSIColor stringToANSIColor(std::string colorCode);
 
 std::function<std::ofstream &(void)> get_logger;
 std::function<void(void)> cls_display_starfield;
+std::function<int(void)> press_a_key;
 
 std::string return_current_time_and_date() {
   auto now = std::chrono::system_clock::now();
@@ -34,9 +35,37 @@ std::string return_current_time_and_date() {
   return ss.str();
 }
 
-int press_a_key(door::Door &door) {
+int press_any_key(door::Door &door) {
+  static std::default_random_engine generator;
+  static std::uniform_int_distribution<int> distribution(0, 1);
+  int use_set = distribution(generator);
   door << door::reset << "Press a key to continue...";
-  int r = door.sleep_key(door.inactivity);
+  int t = 0;
+  int loop = 0;
+
+  const char *loop_chars[3][4] = {{"/", "-", "\\", "|"},
+                                  {"\xde", "\xdc", "\xdd", "\xdf"},
+                                  {"\u2590", "\u2584", "\u258c", "\u2580"}};
+
+  if (door::unicode) {
+    if (use_set == 1)
+      use_set = 2;
+  }
+
+  int r;
+
+  door << loop_chars[use_set][loop % 4];
+  while ((r = door.sleep_key(1)) == -1) {
+    loop++;
+    t++;
+    if (t >= door.inactivity) {
+      door << "\b \b";
+      door << door::nl;
+      return -1;
+    }
+    door << "\b" << loop_chars[use_set][loop % 4];
+  }
+  door << "\b \b";
   door << door::nl;
   return r;
 }
@@ -120,7 +149,7 @@ int configure(door::Door &door, DBData &db) {
         // config_panel.set(1, 1);
         door << config_panel << door::reset << door::nl;
 
-        r = press_a_key(door);
+        r = press_a_key();
         if (r < 0)
           return r;
         door << door::reset << door::cls;
@@ -139,6 +168,7 @@ int main(int argc, char *argv[]) {
 
   // store the door log so we can easily access it.
   get_logger = [&door]() -> ofstream & { return door.log(); };
+  press_a_key = [&door]() -> int { return press_any_key(door); };
 
   std::random_device rd;
   std::mt19937 rng(rd());
@@ -252,8 +282,7 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    door << door::reset;
-    press_a_key(door);
+    press_a_key();
   }
 
   int mx, my; // Max screen width/height
@@ -310,24 +339,24 @@ int main(int argc, char *argv[]) {
 
         score.display_scores(door);
       }
-      r = press_a_key(door);
+      r = press_a_key();
       break;
 
     case 3: // configure
       r = configure(door, spacedb);
-      // r = press_a_key(door);
+      // r = press_a_key();
       break;
 
     case 4: // help
       display_starfield(door, rng);
       door << help << door::nl;
-      r = press_a_key(door);
+      r = press_a_key();
       break;
 
     case 5: // about
       display_starfield(door, rng);
       door << about << door::nl;
-      r = press_a_key(door);
+      r = press_a_key();
       break;
 
     case 6: // quit
@@ -359,6 +388,7 @@ int main(int argc, char *argv[]) {
   // Normal DOOR exit goes here...
   door << door::nl << "Returning you to the BBS, please wait..." << door::nl;
 
+  press_a_key = nullptr;
   get_logger = nullptr;
   cls_display_starfield = nullptr;
   return 0;

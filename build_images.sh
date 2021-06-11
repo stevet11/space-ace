@@ -3,7 +3,7 @@
 BASE=.$$images.h
 FINAL=images.h
 
-ansi-to-src ansi/*.ans > $BASE
+./ansi-to-src.py ansi/*.ans > $BASE
 
 if [ $? -eq 127 ]; then
   echo "using default, missing ansi-to-src"

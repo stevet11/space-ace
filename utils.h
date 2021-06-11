@@ -24,6 +24,8 @@ extern std::function<std::ofstream &(void)> get_logger;
 
 extern std::function<void(void)> cls_display_starfield;
 
+extern std::function<int(void)> press_a_key;
+
 // configuration settings access
 #include "yaml-cpp/yaml.h"
 extern YAML::Node config;
