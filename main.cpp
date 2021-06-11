@@ -46,6 +46,11 @@ int press_any_key(door::Door &door) {
   const char *loop_chars[3][4] = {{"/", "-", "\\", "|"},
                                   {"\xde", "\xdc", "\xdd", "\xdf"},
                                   {"\u2590", "\u2584", "\u258c", "\u2580"}};
+  std::array<int, 11> sleeps = {1000, 700, 500, 300, 200, 200,
+                                200,  300, 500, 700, 1000};
+  // start out at
+  int sleep_number = 5;
+  bool forward = true;
 
   if (door::unicode) {
     if (use_set == 1)
@@ -55,15 +60,43 @@ int press_any_key(door::Door &door) {
   int r;
 
   door << loop_chars[use_set][loop % 4];
-  while ((r = door.sleep_key(1)) == -1) {
-    loop++;
-    t++;
-    if (t >= door.inactivity) {
-      door << "\b \b";
-      door << door::nl;
-      return -1;
+  int ms_sleep = 0;
+  bool check_speed = false;
+
+  while ((r = door.sleep_ms_key(sleeps[sleep_number])) == TIMEOUT) {
+    ms_sleep += sleeps[sleep_number];
+    if (ms_sleep > 1000) {
+      ms_sleep -= 1000;
+      t++;
+
+      if (t >= door.inactivity) {
+        door << "\b \b";
+        door << door::nl;
+        return TIMEOUT;
+      }
     }
-    door << "\b" << loop_chars[use_set][loop % 4];
+    if (forward) {
+      loop++;
+      if (loop == 4) {
+        loop = 0;
+        check_speed = true;
+      }
+    } else {
+      --loop;
+      if (loop < 0) {
+        loop = 3;
+        check_speed = true;
+      }
+    }
+    if (check_speed) {
+      sleep_number++;
+      if (sleep_number >= (int)sleeps.size()) {
+        sleep_number = 0;
+        forward = !forward;
+      }
+      check_speed = false;
+    }
+    door << "\b" << loop_chars[use_set][loop];
   }
   door << "\b \b";
   door << door::nl;
@@ -365,12 +398,12 @@ int main(int argc, char *argv[]) {
   }
   if (r < 0) {
     // TIMEOUT:
-    if (r == -1) {
+    if (r == TIMEOUT) {
       door.log() << "TIMEOUT" << std::endl;
 
       door << timeout << door::reset << door::nl << door::nl;
     } else {
-      if (r == -3) {
+      if (r == OUTOFTIME) {
         door.log() << "OUTTA TIME" << std::endl;
         door::Panel notime = make_notime(mx, my);
         door << notime << door::reset << door::nl;
