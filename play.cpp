@@ -41,6 +41,21 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
     days_played = 0;
   }
 
+  {
+    std::string seed = config["_seed"].as<std::string>();
+    if (get_logger) {
+      get_logger() << "seed: " << seed << std::endl;
+    }
+
+    std::vector<std::string> parts = split(seed, ',');
+    for (auto &p : parts) {
+      seeds.push_back(std::stol(p));
+      if (get_logger) {
+        get_logger() << "seed " << p << std::endl;
+      }
+    }
+  }
+
   /*
    * TODO:  Check the date with the db.  Have they already played up today?  If
    * so, display calendar and find a day they can play.  Or, play missed hands
@@ -298,8 +313,14 @@ next_hand:
     time_t tt = std::chrono::system_clock::to_time_t(play_day);
     tm local_tm = *localtime(&tt);
 
-    std::seed_seq seq{local_tm.tm_year + 1900, local_tm.tm_mon + 1,
-                      local_tm.tm_mday, hand};
+    std::vector<int> rand_seed_seq = seeds;
+    rand_seed_seq.push_back(local_tm.tm_year + 1900);
+    rand_seed_seq.push_back(local_tm.tm_mon + 1);
+    rand_seed_seq.push_back(local_tm.tm_mday);
+    rand_seed_seq.push_back(hand);
+    // std::seed_seq seq{local_tm.tm_year + 1900, local_tm.tm_mon + 1,
+    //                   local_tm.tm_mday, hand};
+    std::seed_seq seq(rand_seed_seq.begin(), rand_seed_seq.end());
     deck = shuffleCards(seq, 1);
     state = makeCardStates();
   }

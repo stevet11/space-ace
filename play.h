@@ -13,7 +13,8 @@ private:
   door::Door &door;
   DBData &db;
   std::mt19937 &rng;
-
+  std::vector <int>seeds;
+  
   int month_last_day;
   /**
    * These map to the positions on the screen that displays the calendar.  This

@@ -18,6 +18,7 @@ void string_toupper(std::string &str);
 bool iequals(const std::string &a, const std::string &b);
 
 std::vector<std::pair<int, int>> find_words(const std::string &text);
+std::vector<std::string> split(const std::string &text, char sep);
 
 // logger access
 extern std::function<std::ofstream &(void)> get_logger;

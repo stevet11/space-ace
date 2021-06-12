@@ -250,6 +250,18 @@ int main(int argc, char *argv[]) {
     update_config = true;
   }
 
+  if (!config["_seed"]) {
+    // pick numbers to use for seed
+    std::string seeds;
+    seeds += std::to_string(rng());
+    seeds += ",";
+    seeds += std::to_string(rng());
+    seeds += ",";
+    seeds += std::to_string(rng());
+    config["_seed"] = seeds;
+    update_config = true;
+  }
+
   // save configuration -- something was updated
   if (update_config) {
     std::ofstream fout("space-ace.yaml");

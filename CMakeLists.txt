@@ -55,7 +55,7 @@ add_custom_command(
 
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/SQLiteCpp)
   message("***")
-  message("*** ERROR/MISSING *** please run: git clone https://github.com/SRombauts/SQLiteCpp.git")
+  message("*** ERROR/MISSING *** please run: git clone https://github.com/SRombauts/SQLiteCpp.git --depth 1")
   message("***")
 endif()
 
@@ -65,7 +65,7 @@ add_subdirectory(SQLiteCpp)
 
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/yaml-cpp)
   message("***")
-  message("*** ERROR/MISSING *** please run: git clone https://github.com/jbeder/yaml-cpp.git")
+  message("*** ERROR/MISSING *** please run: git clone https://github.com/jbeder/yaml-cpp.git --depth 1")
   message("***")
 endif()
 
