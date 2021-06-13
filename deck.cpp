@@ -1203,6 +1203,19 @@ door::Panel make_help(void) {
   return help;
 }
 
+/**
+ * @brief Display starfield
+ *
+ * This displays stars placed randomly on a blank screen.
+ * There are two chars for stars, and there are two colors for them.
+ *
+ * This has been updated, the stars are stored in a set.  The starfield output
+ * is optimized.  If another star is on the same row, we use spaces or ANSI
+ * Cursor Forward to set the next position.
+ *
+ * @param door
+ * @param rng
+ */
 void display_starfield(door::Door &door, std::mt19937 &rng) {
   door << door::reset << door::cls;
 
@@ -1220,6 +1233,32 @@ void display_starfield(door::Door &door, std::mt19937 &rng) {
     stars[1] = "\xf9"; // "\xfa";
   };
 
+  struct star_pos {
+    int x;
+    int y;
+
+    /**
+     * @brief Provide less than operator.
+     *
+     * This will allow the star_pos to be stored sorted (top->bottom,
+     * left->right) in a set.
+     *
+     * @param rhs
+     * @return true
+     * @return false
+     */
+    bool operator<(const star_pos rhs) const {
+      if (rhs.y > y)
+        return true;
+      if (rhs.y == y) {
+        if (rhs.x > x)
+          return true;
+        return false;
+      }
+      return false;
+    }
+  };
+
   {
     // Make uniform random distribution between 1 and MAX screen size X/Y
     std::uniform_int_distribution<int> uni_x(1, mx);
@@ -1233,18 +1272,64 @@ void display_starfield(door::Door &door, std::mt19937 &rng) {
     // door.log() << "Generating starmap using " << mx << "," << my << " : "
     //           << MAX_STARS << " stars." << std::endl;
 
-    for (int x = 0; x < MAX_STARS; x++) {
-      door::Goto star_at(uni_x(rng), uni_y(rng));
-      door << star_at;
-      if (x % 5 < 2)
+    std::set<star_pos> sky;
+
+    for (int i = 0; i < MAX_STARS; i++) {
+      star_pos pos;
+      bool valid;
+      do {
+        pos.x = uni_x(rng);
+        pos.y = uni_y(rng);
+        auto ret = sky.insert(pos);
+        // was insert a success?  (not a duplicate)
+        valid = ret.second;
+      } while (!valid);
+    }
+
+    int i = 0;
+    star_pos last_pos;
+
+    for (auto &pos : sky) {
+      bool use_goto = true;
+
+      if (i != 0) {
+        // check last_pos to current position
+        if (pos.y == last_pos.y) {
+          // Ok, same row -- try some optimizations
+          int dx = pos.x - last_pos.x;
+          if (dx == 0) {
+            use_goto = false;
+          } else {
+            if (dx < 5) {
+              door << std::string(dx, ' ');
+              use_goto = false;
+            } else {
+              // Use ANSI Cursor Forward
+              door << "\x1b[" << dx << "C";
+              use_goto = false;
+            }
+          }
+        }
+      }
+
+      if (use_goto) {
+        door::Goto star_at(pos.x, pos.y);
+        door << star_at;
+      }
+
+      if (i % 5 < 2)
         door << dark;
       else
         door << white;
 
-      if (x % 2 == 0)
+      if (i % 2 == 0)
         door << stars[0];
       else
         door << stars[1];
+
+      ++i;
+      last_pos = pos;
+      last_pos.x++; // star output moves us by one.
     }
   }
 }
