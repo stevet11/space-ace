@@ -363,7 +363,11 @@ next_hand:
 
   while (in_game) {
     // time might have updated, so update score panel too.
-    score_panel->update(door);
+    if (score_panel->update(door)) {
+      int cx, cy;
+      cardPos(select_card, cx, cy);
+      door << door::reset << door::Goto(cx + off_x + 3, cy + off_y + 2);
+    }
 
     // do the save here -- try to hide the database lag
     if (save_streak) {
@@ -425,7 +429,7 @@ next_hand:
         }
 
         next_quit_panel->update();
-        door << *next_quit_panel;
+        door << *next_quit_panel << door::reset;
 
         // use some other variable here for what we get from the get_one_of.
 
@@ -620,7 +624,7 @@ next_hand:
                              hand, 1, score);
                 //}
                 next_quit_panel->update();
-                door << *next_quit_panel;
+                door << *next_quit_panel << door::reset;
 
                 if (hand < total_hands) {
                   r = door.get_one_of("NQ");
@@ -660,7 +664,7 @@ next_hand:
             cardPos(select_card, cx, cy);
             c = dp.marker(1);
             c->set(cx + off_x + 2, cy + off_y + 2);
-            door << *c;
+            door << *c << door::reset;
           }
         }
         break;
@@ -685,7 +689,9 @@ next_hand:
           cardPos(select_card, cx, cy);
           c = dp.marker(1);
           c->set(cx + off_x + 2, cy + off_y + 2);
-          door << *c;
+          door << *c
+               << door::reset; // reset works here, because the selected_card bg
+                               // is WHITE, and cursor is WHITE.
         }
       } break;
       case XKEY_RIGHT_ARROW:
@@ -709,7 +715,7 @@ next_hand:
           cardPos(select_card, cx, cy);
           c = dp.marker(1);
           c->set(cx + off_x + 2, cy + off_y + 2);
-          door << *c;
+          door << *c << door::reset;
         }
       }
 
@@ -834,7 +840,7 @@ void PlayCards::redraw(bool dealing) {
     cardPos(select_card, cx, cy);
     c = dp.marker(1);
     c->set(cx + off_x + 2, cy + off_y + 2);
-    door << *c;
+    door << *c << door::reset;
   }
 }
 
