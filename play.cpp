@@ -360,6 +360,7 @@ next_hand:
 
   bool in_game = true;
   bool save_streak = false;
+  int waiting = 0;
 
   while (in_game) {
     // time might have updated, so update score panel too.
@@ -376,7 +377,23 @@ next_hand:
       db.setSetting("best_streak", best);
     }
 
-    r = door.sleep_key(door.inactivity);
+    waiting = 0;
+    while (waiting < door.inactivity) {
+      r = door.sleep_key(1);
+      if (r == TIMEOUT) {
+        // TIMEOUT is expected here, we're sleeping 1 sec.
+        ++waiting;
+        if (score_panel->update(door)) {
+          // score panel updated, reposition the cursor.
+          int cx, cy;
+          cardPos(select_card, cx, cy);
+          door << door::reset << door::Goto(cx + off_x + 3, cy + off_y + 2);
+        }
+      } else {
+        break;
+      }
+    }
+    // r = door.sleep_key(door.inactivity);
     if (r > 0) {
       // not a timeout or expire.
       if (r < 0x1000) // not a function key
@@ -723,14 +740,6 @@ next_hand:
       }
     } else
       in_game = false;
-  }
-
-  if (r == 'Q') {
-    // continue, play next hand (if applicable), or quit?
-    // if score < 50, don't bother saving.
-
-    // continue -- eat r & redraw.
-    // quit, save score and exit  (unless score is zero).
   }
 
   return r;
