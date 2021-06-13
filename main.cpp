@@ -35,12 +35,166 @@ std::string return_current_time_and_date() {
   return ss.str();
 }
 
+door::renderFunction any_color = [](const std::string &txt) -> door::Render {
+  door::Render r(txt);
+
+  door::ANSIColor blue(door::COLOR::GREEN, door::ATTR::BOLD);
+  door::ANSIColor cyan(door::COLOR::YELLOW, door::ATTR::BOLD);
+
+  for (char const &c : txt) {
+    if (isupper(c))
+      r.append(blue);
+    else
+      r.append(cyan);
+  }
+  return r;
+};
+
 int press_any_key(door::Door &door) {
   static std::default_random_engine generator;
   static std::uniform_int_distribution<int> distribution(0, 1);
   int use_set = distribution(generator);
-  door << door::reset << "Press a key to continue...";
+  std::string text = "Press a key to continue...";
+
+  door << door::reset;
+  any_color(text).output(door);
+  // << text;
+
+  int r;
   int t = 0;
+  // alternate animation
+
+#define ALT_ANIMATION
+#ifdef ALT_ANIMATION
+  std::vector<std::pair<int, int>> words = find_words(text);
+  std::string work_text = text;
+  int text_length = text.size();
+
+  // current word
+  unsigned int word = 0;
+
+  std::string current_word = text.substr(words[word].first, words[word].second);
+  unsigned int wpos = 0;
+  int ms_sleep = 0;
+  int sleep_ms = 250;
+  t = 0;
+
+  while ((r = door.sleep_ms_key(sleep_ms)) == TIMEOUT) {
+    ms_sleep += sleep_ms;
+    if (ms_sleep > 1000) {
+      ms_sleep -= 1000;
+      t++;
+
+      if (t >= door.inactivity) {
+        // restore text
+        door << std::string(text_length, '\b');
+        any_color(text).output(door);
+        // << text;
+        door << door::nl;
+        return TIMEOUT;
+      }
+    }
+    ++wpos;
+    if (wpos == current_word.size()) {
+      ++word;
+      work_text = text;
+      wpos = 0;
+      if (word == words.size())
+        word = 0;
+      current_word = text.substr(words[word].first, words[word].second);
+    }
+
+    int c = current_word[wpos];
+
+    while (!std::islower(c)) {
+      // It is not lower case
+      wpos++;
+      if (wpos == current_word.size()) {
+        // Ok, this word is done.
+        wpos = 0;
+        word++;
+        work_text = text;
+        if (word == words.size())
+          word = 0;
+        current_word = text.substr(words[word].first, words[word].second);
+        wpos = 0;
+      }
+      c = current_word[wpos];
+    }
+
+    // Ok, I found something that's lower case.
+
+    work_text[words[word].first + wpos] = std::toupper(c);
+    //    std::toupper(words[word].first + wpos);
+    door << std::string(text_length, '\b');
+    any_color(work_text).output(door);
+    // << work_text;
+  }
+
+  // ok, restore the original string
+  door << std::string(text_length, '\b');
+  any_color(text).output(door);
+  //<< text;
+  return r;
+
+#endif
+
+#ifdef ALT_ANIMATION_2
+  // This can be cleaned up to be simpler -- and do the same effect.  We don't
+  // need the words here, we're not really using them.
+
+  std::vector<std::pair<int, int>> words = find_words(text);
+  std::string work_text = text;
+  int text_length = text.size();
+
+  // current word
+  unsigned int word = 0;
+
+  std::string current_word = text.substr(words[word].first, words[word].second);
+  unsigned int wpos = 0;
+
+  // DOES NOT HONOR door.inactivity (AT THIS TIME)
+  while ((r = door.sleep_ms_key(200)) == TIMEOUT) {
+    ++wpos;
+    if (wpos == current_word.size()) {
+      ++word;
+      wpos = 0;
+      if (word == words.size())
+        word = 0;
+      current_word = text.substr(words[word].first, words[word].second);
+    }
+
+    int c = current_word[wpos];
+
+    while (!std::islower(c)) {
+      // It is not lower case
+      wpos++;
+      if (wpos == current_word.size()) {
+        // Ok, this word is done.
+        wpos = 0;
+        word++;
+        if (word == words.size())
+          word = 0;
+        current_word = text.substr(words[word].first, words[word].second);
+        wpos = 0;
+      }
+      c = current_word[wpos];
+    }
+
+    // Ok, I found something that's lower case.
+    work_text = text;
+    work_text[words[word].first + wpos] = std::toupper(c);
+    //    std::toupper(words[word].first + wpos);
+    door << std::string(text_length, '\b') << work_text;
+  }
+  // ok, restore the original string
+  door << std::string(text_length, '\b') << text;
+  return r;
+
+#endif
+
+  // animation spinner that reverses itself.  /-\| and blocks.
+  t = 0;
   int loop = 0;
 
   const char *loop_chars[3][4] = {{"/", "-", "\\", "|"},
@@ -57,10 +211,8 @@ int press_any_key(door::Door &door) {
       use_set = 2;
   }
 
-  int r;
-
   door << loop_chars[use_set][loop % 4];
-  int ms_sleep = 0;
+  ms_sleep = 0;
   bool check_speed = false;
 
   while ((r = door.sleep_ms_key(sleeps[sleep_number])) == TIMEOUT) {
