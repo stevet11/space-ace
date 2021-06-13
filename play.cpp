@@ -43,15 +43,10 @@ PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
 
   {
     std::string seed = config["_seed"].as<std::string>();
-    if (get_logger) {
-      get_logger() << "seed: " << seed << std::endl;
-    }
-
-    std::vector<std::string> parts = split(seed, ',');
-    for (auto &p : parts) {
-      seeds.push_back(std::stol(p));
-      if (get_logger) {
-        get_logger() << "seed " << p << std::endl;
+    if (!seed.empty()) {
+      std::vector<std::string> parts = split(seed, ',');
+      for (auto &p : parts) {
+        seeds.push_back(std::stol(p));
       }
     }
   }
