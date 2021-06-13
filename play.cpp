@@ -446,7 +446,12 @@ next_hand:
         }
 
         next_quit_panel->update();
-        door << *next_quit_panel << door::reset;
+        door << *next_quit_panel;
+        // Has card 27 played?  If so, use BLACK.  Otherwise WHITE.
+        if (state.at(26) == 2)
+          door << door::ANSIColor(door::COLOR::BLACK);
+        else
+          door << door::reset;
 
         // use some other variable here for what we get from the get_one_of.
 
@@ -641,7 +646,12 @@ next_hand:
                              hand, 1, score);
                 //}
                 next_quit_panel->update();
-                door << *next_quit_panel << door::reset;
+                door << *next_quit_panel;
+                // Has card 27 played?  If so, use BLACK.  Otherwise WHITE.
+                if (state.at(26) == 2)
+                  door << door::ANSIColor(door::COLOR::BLACK);
+                else
+                  door << door::reset;
 
                 if (hand < total_hands) {
                   r = door.get_one_of("NQ");
@@ -707,8 +717,8 @@ next_hand:
           c = dp.marker(1);
           c->set(cx + off_x + 2, cy + off_y + 2);
           door << *c
-               << door::reset; // reset works here, because the selected_card bg
-                               // is WHITE, and cursor is WHITE.
+               << door::reset; // reset works here, because the selected_card
+                               // bg is WHITE, and cursor is WHITE.
         }
       } break;
       case XKEY_RIGHT_ARROW:
