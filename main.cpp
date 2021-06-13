@@ -327,7 +327,9 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    press_a_key();
+
+    if (press_a_key() < 0)
+      return 0;
   }
 
   int mx, my; // Max screen width/height
@@ -409,7 +411,7 @@ int main(int argc, char *argv[]) {
     }
   }
   if (r < 0) {
-    // TIMEOUT:
+    // DOOR_ERROR:
     if (r == TIMEOUT) {
       door.log() << "TIMEOUT" << std::endl;
 
