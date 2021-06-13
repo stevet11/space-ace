@@ -13,8 +13,8 @@ private:
   door::Door &door;
   DBData &db;
   std::mt19937 &rng;
-  std::vector <int>seeds;
-  
+  std::vector<int> seeds;
+
   int month_last_day;
   /**
    * These map to the positions on the screen that displays the calendar.  This
@@ -51,7 +51,6 @@ private:
   void update_calendar_days(void);
 
   std::string current_month(std::chrono::_V2::system_clock::time_point now);
-  int press_a_key(void);
 
   int hand;
   int total_hands;

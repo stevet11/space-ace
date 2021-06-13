@@ -105,13 +105,6 @@ void PlayCards::bonus(void) {
   door << door::ANSIColor(door::COLOR::YELLOW, door::ATTR::BOLD) << "BONUS";
 }
 
-int PlayCards::press_a_key(void) {
-  door << door::reset << "Press a key to continue...";
-  int r = door.sleep_key(door.inactivity);
-  door << door::nl;
-  return r;
-}
-
 /**
  * @brief Play
  *
