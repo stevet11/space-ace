@@ -35,22 +35,29 @@ std::string return_current_time_and_date() {
   return ss.str();
 }
 
-door::renderFunction any_color = [](const std::string &txt) -> door::Render {
-  door::Render r(txt);
-
-  door::ANSIColor blue(door::COLOR::GREEN, door::ATTR::BOLD);
-  door::ANSIColor cyan(door::COLOR::YELLOW, door::ATTR::BOLD);
-
-  for (char const &c : txt) {
-    if (isupper(c))
-      r.append(blue);
-    else
-      r.append(cyan);
-  }
-  return r;
-};
-
 int press_any_key(door::Door &door) {
+  door::ANSIColor green{door::COLOR::GREEN, door::ATTR::BOLD};
+  door::ANSIColor blue{door::COLOR::BLUE, door::ATTR::BOLD};
+  door::ANSIColor yellow{door::COLOR::YELLOW, door::ATTR::BOLD};
+  door::ANSIColor any_caps = green;
+  door::ANSIColor any_lower = yellow;
+
+  door::renderFunction any_color =
+      [&any_caps, &any_lower](const std::string &txt) -> door::Render {
+    door::Render r(txt);
+
+    // door::ANSIColor blue(door::COLOR::GREEN, door::ATTR::BOLD);
+    // door::ANSIColor cyan(door::COLOR::YELLOW, door::ATTR::BOLD);
+
+    for (char const &c : txt) {
+      if (isupper(c))
+        r.append(any_caps);
+      else
+        r.append(any_lower);
+    }
+    return r;
+  };
+
   static std::default_random_engine generator;
   static std::uniform_int_distribution<int> distribution(0, 1);
   int use_set = distribution(generator);
@@ -99,8 +106,18 @@ int press_any_key(door::Door &door) {
       ++word;
       work_text = text;
       wpos = 0;
-      if (word == words.size())
+      if (word == words.size()) {
+        // we've reached the end
         word = 0;
+        if (any_caps == green)
+          any_caps = blue;
+        else
+          any_caps = green;
+        door << std::string(text_length, '\b');
+        any_color(work_text).output(door);
+        current_word = text.substr(words[word].first, words[word].second);
+        continue;
+      }
       current_word = text.substr(words[word].first, words[word].second);
     }
 
@@ -114,8 +131,9 @@ int press_any_key(door::Door &door) {
         wpos = 0;
         word++;
         work_text = text;
-        if (word == words.size())
+        if (word == words.size()) {
           word = 0;
+        }
         current_word = text.substr(words[word].first, words[word].second);
         wpos = 0;
       }
@@ -126,6 +144,7 @@ int press_any_key(door::Door &door) {
 
     work_text[words[word].first + wpos] = std::toupper(c);
     //    std::toupper(words[word].first + wpos);
+
     door << std::string(text_length, '\b');
     any_color(work_text).output(door);
     // << work_text;
