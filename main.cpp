@@ -14,6 +14,7 @@
 #include "scores.h"
 #include "utils.h"
 #include "version.h"
+#include "starfield.h"
 #include <algorithm> // transform
 
 // configuration here -- access via extern
@@ -358,8 +359,11 @@ int main(int argc, char *argv[]) {
   std::random_device rd;
   std::mt19937 rng(rd());
 
-  cls_display_starfield = [&door, &rng]() -> void {
-    display_starfield(door, rng);
+  starfield mainfield(door, rng);
+
+  cls_display_starfield = [&mainfield]() -> void {
+    mainfield.display();
+    //display_starfield(door, rng);
   };
 
   DBData spacedb;
