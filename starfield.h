@@ -56,12 +56,14 @@ struct moving_star {
   int y;
   int symbol;
   int color;
-
+  bool visible;
   double xpos;
   double ypos;
   double movex;
   double movey;
 };
+
+typedef std::function<bool(int x, int y)> checkVisibleFunction;
 
 class AnimatedStarfield {
   door::Door &door;
@@ -69,7 +71,7 @@ class AnimatedStarfield {
   std::vector<moving_star> sky;
   std::uniform_int_distribution<int> uni_x;
   std::uniform_int_distribution<int> uni_y;
-  moving_star make_pos(void);
+  moving_star make_pos(bool centered = false);
 
   int mx;
   int my;
@@ -81,12 +83,14 @@ class AnimatedStarfield {
   door::ANSIColor dark;
   const char *stars[2];
   double distance(double x, double y);
+  checkVisibleFunction visible;
 
 public:
   AnimatedStarfield(door::Door &door, std::mt19937 &Rng);
   void regenerate(void);
   void display(void);
   void animate(void);
+  void setVisible(checkVisibleFunction cvf);
 };
 
 #endif

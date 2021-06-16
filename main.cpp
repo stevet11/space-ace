@@ -380,29 +380,17 @@ int main(int argc, char *argv[]) {
 
   Starfield mainfield(door, rng);
 
-  cls_display_starfield = [&mainfield]() -> void {
-    mainfield.display();
-    // display_starfield(door, rng);
-  };
+  cls_display_starfield = [&mainfield]() -> void { mainfield.display(); };
 
   /*
-    // FIX ANIMATION.  Yuck!
-
-    mainfield.display();
-    int delay;
-    for (delay = 0; delay < 80; ++delay) {
-      door.sleep_ms_key(100);
-      mainfield.animate();
+    AnimatedStarfield amazing(door, rng);
+    amazing.display();
+    int res = -1;
+    while (res == -1) {
+      res = door.sleep_ms_key(250);
+      amazing.animate();
     }
   */
-
-  AnimatedStarfield amazing(door, rng);
-  amazing.display();
-  int res = -1;
-  while (res == -1) {
-    res = door.sleep_ms_key(250);
-    amazing.animate();
-  }
 
   DBData spacedb;
   spacedb.setUser(door.username);
@@ -552,6 +540,31 @@ int main(int argc, char *argv[]) {
   about.set((mx - 60) / 2, (my - 9) / 2);
   // center the help box
   help.set((mx - 60) / 2, (my - 15) / 2);
+
+  /*
+  // animated starfield with about panel
+    AnimatedStarfield amazing(door, rng);
+
+    checkVisibleFunction about_visible = [&about](int x, int y) -> bool {
+      int px, py;
+      about.get(px, py);
+      int pw = about.getWidth();
+      int ph = about.getHeight();
+      if ((x >= px) and (x <= (px + pw + 1)) and (y >= py) and (y <= py + ph))
+        return false;
+      return true;
+    };
+    amazing.setVisible(about_visible);
+    amazing.regenerate();
+    amazing.display();
+    door << about << door::reset;
+
+    int res = -1;
+    while (res == -1) {
+      res = door.sleep_ms_key(250);
+      amazing.animate();
+    }
+  */
 
   PlayCards pc(door, spacedb, rng);
   Starfield menu_stars(door, rng);
