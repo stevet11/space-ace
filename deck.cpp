@@ -3,6 +3,7 @@
 #include "space.h"
 #include "utils.h"
 #include "version.h"
+
 #include <algorithm>
 #include <iomanip> // setw
 #include <map>
@@ -1203,6 +1204,7 @@ door::Panel make_help(void) {
   return help;
 }
 
+#ifdef NOMORE
 /**
  * @brief Display starfield
  *
@@ -1333,6 +1335,7 @@ void display_starfield(door::Door &door, std::mt19937 &rng) {
     }
   }
 }
+#endif
 
 void display_space_ace(door::Door &door) {
   int mx = door.width;

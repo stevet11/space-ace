@@ -17,7 +17,7 @@
 #define CHEATER "_CHEAT_YOUR_ASS_OFF"
 
 PlayCards::PlayCards(door::Door &d, DBData &dbd, std::mt19937 &r)
-    : door{d}, db{dbd}, rng{r} {
+    : door{d}, db{dbd}, rng{r}, stars{d, r} {
   init_values();
 
   play_day = std::chrono::system_clock::now();
@@ -167,10 +167,13 @@ CALENDAR_UPDATE:
   calendar->update();
   //}
 
+  stars.display();
+  /*
   if (cls_display_starfield)
     cls_display_starfield();
   else
     door << door::reset << door::cls;
+  */
 
   door << *calendar;
 
@@ -760,7 +763,8 @@ next_hand:
 void PlayCards::redraw(bool dealing) {
   shared_panel c;
 
-  display_starfield(door, rng);
+  stars.display();
+  // display_starfield(door, rng);
   // door << door::reset << door::cls;
   door << *spaceAceTriPeaks;
 

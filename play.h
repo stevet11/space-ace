@@ -4,6 +4,7 @@
 #include "db.h"
 #include "deck.h"
 #include "door.h"
+#include "starfield.h"
 
 #include <chrono>
 #include <random>
@@ -14,6 +15,7 @@ private:
   DBData &db;
   std::mt19937 &rng;
   std::vector<int> seeds;
+  Starfield stars;
 
   int month_last_day;
   /**

@@ -194,7 +194,8 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   return p;
 }
 
-Scores::Scores(door::Door &d, DBData &dbd) : door{d}, db{dbd} {
+Scores::Scores(door::Door &d, DBData &dbd, Starfield &sf)
+    : door{d}, db{dbd}, stars{sf} {
   top_scores = make_top_scores_panel();
   top_this_month = make_top_this_month_panel();
 }

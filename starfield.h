@@ -1,3 +1,6 @@
+#ifndef STARFIELD_H
+#define STARFIELD_H
+
 #include "door.h"
 #include <random>
 #include <set>
@@ -5,6 +8,8 @@
 struct star_pos {
   int x;
   int y;
+  int symbol;
+  int color;
 
   /**
    * @brief Provide less than operator.
@@ -28,13 +33,60 @@ struct star_pos {
   }
 };
 
-class starfield {
+class Starfield {
   door::Door &door;
   std::mt19937 &rng;
   std::set<star_pos> sky;
+  std::uniform_int_distribution<int> uni_x;
+  std::uniform_int_distribution<int> uni_y;
+  star_pos make_pos(void);
+
+  door::ANSIColor white; //(door::COLOR::WHITE);
+  door::ANSIColor dark;  //(door::COLOR::BLACK, door::ATTR::BRIGHT);
+  const char *stars[2];
 
 public:
-  starfield(door::Door &Door, std::mt19937 &Rng);
+  Starfield(door::Door &Door, std::mt19937 &Rng);
   void regenerate(void);
   void display(void);
 };
+
+struct moving_star {
+  int x;
+  int y;
+  int symbol;
+  int color;
+
+  double xpos;
+  double ypos;
+  double movex;
+  double movey;
+};
+
+class AnimatedStarfield {
+  door::Door &door;
+  std::mt19937 &rng;
+  std::vector<moving_star> sky;
+  std::uniform_int_distribution<int> uni_x;
+  std::uniform_int_distribution<int> uni_y;
+  moving_star make_pos(void);
+
+  int mx;
+  int my;
+  double cx;
+  double cy;
+  double max_d;
+
+  door::ANSIColor white;
+  door::ANSIColor dark;
+  const char *stars[2];
+  double distance(double x, double y);
+
+public:
+  AnimatedStarfield(door::Door &door, std::mt19937 &Rng);
+  void regenerate(void);
+  void display(void);
+  void animate(void);
+};
+
+#endif

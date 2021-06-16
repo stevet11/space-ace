@@ -12,9 +12,9 @@
 #include "deck.h"
 #include "play.h"
 #include "scores.h"
+#include "starfield.h"
 #include "utils.h"
 #include "version.h"
-#include "starfield.h"
 #include <algorithm> // transform
 
 // configuration here -- access via extern
@@ -378,12 +378,31 @@ int main(int argc, char *argv[]) {
   std::random_device rd;
   std::mt19937 rng(rd());
 
-  starfield mainfield(door, rng);
+  Starfield mainfield(door, rng);
 
   cls_display_starfield = [&mainfield]() -> void {
     mainfield.display();
-    //display_starfield(door, rng);
+    // display_starfield(door, rng);
   };
+
+  /*
+    // FIX ANIMATION.  Yuck!
+
+    mainfield.display();
+    int delay;
+    for (delay = 0; delay < 80; ++delay) {
+      door.sleep_ms_key(100);
+      mainfield.animate();
+    }
+  */
+
+  AnimatedStarfield amazing(door, rng);
+  amazing.display();
+  int res = -1;
+  while (res == -1) {
+    res = door.sleep_ms_key(250);
+    amazing.animate();
+  }
 
   DBData spacedb;
   spacedb.setUser(door.username);
@@ -535,11 +554,13 @@ int main(int argc, char *argv[]) {
   help.set((mx - 60) / 2, (my - 15) / 2);
 
   PlayCards pc(door, spacedb, rng);
+  Starfield menu_stars(door, rng);
 
   int r = 0;
   while ((r >= 0) and (r != 6)) {
     // starfield + menu ?
-    display_starfield(door, rng);
+    // display_starfield(door, rng);
+    menu_stars.display();
     r = m.choose(door);
     // need to reset the colors.  (whoops!)
     door << door::reset << door::cls; // door::nl;
@@ -557,7 +578,7 @@ int main(int argc, char *argv[]) {
 
       // door << door::cls;
       {
-        Scores score(door, spacedb);
+        Scores score(door, spacedb, menu_stars);
 
         score.display_scores(door);
       }
@@ -570,13 +591,15 @@ int main(int argc, char *argv[]) {
       break;
 
     case 4: // help
-      display_starfield(door, rng);
+      // display_starfield(door, rng);
+      menu_stars.display();
       door << help << door::nl;
       r = press_a_key();
       break;
 
     case 5: // about
-      display_starfield(door, rng);
+      // display_starfield(door, rng);
+      menu_stars.display();
       door << about << door::nl;
       r = press_a_key();
       break;
@@ -604,7 +627,8 @@ int main(int argc, char *argv[]) {
   door << door::nl;
 
   // door << door::reset << door::cls;
-  display_starfield(door, rng);
+  // display_starfield(door, rng);
+  mainfield.display();
   door << m << door::reset << door::nl;
 
   // Normal DOOR exit goes here...
