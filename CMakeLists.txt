@@ -71,6 +71,6 @@ endif()
 
 add_subdirectory(yaml-cpp)
 
-add_executable(space-ace main.cpp deck.cpp db.h db.cpp play.h play.cpp scores.h scores.cpp utils.h utils.cpp images.h)
+add_executable(space-ace main.cpp deck.cpp db.h db.cpp play.h play.cpp scores.h scores.cpp utils.h utils.cpp starfield.cpp starfield.h images.h)
 target_link_libraries(space-ace door++ pthread SQLiteCpp sqlite3 dl yaml-cpp)
 

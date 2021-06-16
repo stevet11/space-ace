@@ -1362,7 +1362,9 @@ void display_starfield_space_ace(door::Door &door, std::mt19937 &rng) {
   // mx = door.width;
   // my = door.height;
 
-  display_starfield(door, rng);
+  if (cls_display_starfield)
+    cls_display_starfield();
+  // display_starfield(door, rng);
   display_space_ace(door);
   door << door::reset;
 }
