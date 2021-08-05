@@ -106,7 +106,7 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
 }
 
 std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
-  const int W = 30;
+  const int W = 33;
   door::COLOR panel_bg = door::COLOR::BLUE;
   door::ANSIColor panel_color = door::ANSIColor(door::COLOR::CYAN, panel_bg);
   door::ANSIColor heading_color =
