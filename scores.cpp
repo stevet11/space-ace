@@ -7,9 +7,11 @@
 
 door::renderFunction scoresRender(door::ANSIColor date, int dlen,
                                   door::ANSIColor nick, int nlen,
-                                  door::ANSIColor score) {
+                                  door::ANSIColor score)
+{
   door::renderFunction rf = [date, dlen, nick, nlen,
-                             score](const std::string &txt) -> door::Render {
+                             score](const std::string &txt) -> door::Render
+  {
     door::Render r(txt);
     r.append(date, dlen);
     r.append(nick, nlen);
@@ -21,7 +23,8 @@ door::renderFunction scoresRender(door::ANSIColor date, int dlen,
   return rf;
 }
 
-std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
+std::unique_ptr<door::Panel> Scores::make_top_scores_panel()
+{
   const int W = 38;
   door::COLOR panel_bg = door::COLOR::BLUE;
   door::ANSIColor panel_color =
@@ -42,7 +45,8 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   p->addLine(std::move(spacer));
 
   auto monthly_scores = db.getMonthlyScores(15);
-  if (monthly_scores.empty()) {
+  if (monthly_scores.empty())
+  {
     // No Monthly Scores
     door::ANSIColor nny_color =
         door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
@@ -84,7 +88,8 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   door::renderFunction yourScoreColors =
       scoresRender(date, longest_month, yourNick, 17, yourScore);
 
-  for (auto it : monthly_scores) {
+  for (auto it : monthly_scores)
+  {
     time_t date = it.date;
     std::string nice_date = convertDateToMonthlyFormat(date);
     oss.clear();
@@ -105,8 +110,9 @@ std::unique_ptr<door::Panel> Scores::make_top_scores_panel() {
   return p;
 }
 
-std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
-  const int W = 33;
+std::unique_ptr<door::Panel> Scores::make_top_this_month_panel()
+{
+  const int W = 34;
   door::COLOR panel_bg = door::COLOR::BLUE;
   door::ANSIColor panel_color = door::ANSIColor(door::COLOR::CYAN, panel_bg);
   door::ANSIColor heading_color =
@@ -133,7 +139,8 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   p->addLine(std::move(spacer));
 
   auto monthly_scores = db.getScores(15);
-  if (monthly_scores.empty()) {
+  if (monthly_scores.empty())
+  {
     // No Monthly Scores
     door::ANSIColor nny_color =
         door::ANSIColor(door::COLOR::YELLOW, panel_bg, door::ATTR::BOLD);
@@ -174,7 +181,8 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
   door::renderFunction yourScoreColors =
       scoresRender(date, longest_month, yourNick, 17, yourScore);
 
-  for (auto it : monthly_scores) {
+  for (auto it : monthly_scores)
+  {
     time_t date = it.date;
     std::string nice_date = convertDateToMonthDayFormat(date);
     oss.clear();
@@ -195,12 +203,14 @@ std::unique_ptr<door::Panel> Scores::make_top_this_month_panel() {
 }
 
 Scores::Scores(door::Door &d, DBData &dbd, Starfield &sf)
-    : door{d}, db{dbd}, stars{sf} {
+    : door{d}, db{dbd}, stars{sf}
+{
   top_scores = make_top_scores_panel();
   top_this_month = make_top_this_month_panel();
 }
 
-void Scores::display_scores(door::Door &door) {
+void Scores::display_scores(door::Door &door)
+{
   if (cls_display_starfield)
     cls_display_starfield();
 
