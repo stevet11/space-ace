@@ -7,6 +7,7 @@
 #include <ctime>
 #include <iomanip> // put_time
 #include <sstream>
+#include <thread>
 
 /**
  * @brief This config option allow any card to be played on any other card.
